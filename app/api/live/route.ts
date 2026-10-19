@@ -1,0 +1,19 @@
+import { env } from 'cloudflare:workers';
+import { z } from 'zod';
+import { currentUser,orderAccess,all,one,run,uid,updateOrder,event,guardOrigin,HttpError,json,fail } from '../../../lib/server';
+export const dynamic='force-dynamic';
+async function access(id:string,u:any){const o=await orderAccess(id,u);if(o.status!=='in_progress'||!o.liveConsent)throw new HttpError(403,'Трансляция недоступна: уборка не идёт или согласие отозвано');return o;}
+export async function GET(req:Request){try{const u=await currentUser(),p=new URL(req.url).searchParams,o=await access(z.string().uuid().parse(p.get('order')),u);const mine=o.crew.includes(u.id);if(!mine&&o.clientId!==u.id)throw new HttpError(403,'Видео доступно только клиенту заказа и назначенному сотруднику');
+ const channels=await all(`SELECT * FROM channels WHERE order_id=? AND ${mine?'worker_id':'viewer_id'}=? AND updated>?`,o.id,u.id,Date.now()-90000);
+ const e=env as any;const iceServers:any[]=[{urls:'stun:stun.l.google.com:19302'}];if(e.TURN_URLS&&e.TURN_USERNAME&&e.TURN_CREDENTIAL)iceServers.push({urls:e.TURN_URLS.split(','),username:e.TURN_USERNAME,credential:e.TURN_CREDENTIAL});
+ return json({channels,states:o.liveStates||{},crew:o.crew,people:(await all('SELECT id,name FROM members')).filter(p=>o.crew.includes(p.id)),iceServers,turnReady:iceServers.length>1,order:{id:o.id,address:o.address},worker:mine});
+ }catch(e){return fail(e)}}
+export async function POST(req:Request){try{guardOrigin(req);const u=await currentUser(),b=z.record(z.any()).parse(await req.json()),id=z.string().uuid().parse(b.order),o=await access(id,u);
+ if(b.action==='state'){if(!o.crew.includes(u.id))throw new HttpError(403,'Камера доступна назначенному сотруднику');const state=z.enum(['live','paused','offline']).parse(b.state);if(state==='live'&&b.consent!==true)throw new HttpError(400,'Подтвердите согласие на трансляцию');const liveStates={...(o.liveStates||{}),[u.id]:{state,at:Date.now()}};await updateOrder(o,{liveStates},u,`Камера: ${state}`);if(state!=='live')await run('DELETE FROM channels WHERE order_id=? AND worker_id=?',id,u.id);return json({ok:true});}
+ if(b.action==='heartbeat'){if(!o.crew.includes(u.id))throw new HttpError(403,'Нет доступа');if(o.liveStates?.[u.id]?.state==='live')await run("UPDATE orders SET details=json_set(details,?,?) WHERE id=? AND status='in_progress' AND json_extract(details,'$.liveConsent')=1", '$.liveStates.\"'+u.id+'\".at',Date.now(),id);return json({ok:true});}
+ if(b.action==='offer'){if(o.clientId!==u.id)throw new HttpError(403,'Только заказчик может смотреть эфир');const worker=z.string().parse(b.worker);if(!o.crew.includes(worker)||o.liveStates?.[worker]?.state!=='live'||Date.now()-o.liveStates[worker].at>45000)throw new HttpError(409,'Камера сейчас не в эфире');const offer=z.string().min(20).max(100000).parse(b.offer);await run('DELETE FROM channels WHERE (order_id=? AND worker_id=? AND viewer_id=?) OR updated<?',id,worker,u.id,Date.now()-180000);const channel=uid();await run('INSERT INTO channels(id,order_id,worker_id,viewer_id,offer,updated) VALUES(?,?,?,?,?,?)',channel,id,worker,u.id,offer,Date.now());await event(id,u.id,'Клиент открыл камеру сотрудника');return json({channel});}
+ const c=await one('SELECT * FROM channels WHERE id=? AND order_id=?',z.string().uuid().parse(b.channel),id);if(!c||![c.worker_id,c.viewer_id].includes(u.id))throw new HttpError(403,'Нет доступа к видеосессии');
+ if(b.action==='answer'){if(c.worker_id!==u.id)throw new HttpError(403,'Нет доступа');await run('UPDATE channels SET answer=?,state=?,updated=? WHERE id=?',z.string().min(20).max(100000).parse(b.answer),'connected',Date.now(),c.id);return json({ok:true});}
+ if(b.action==='ping'){await run('UPDATE channels SET updated=? WHERE id=?',Date.now(),c.id);return json({ok:true});}
+ if(b.action==='close'){await run('DELETE FROM channels WHERE id=?',c.id);return json({ok:true});}throw new HttpError(400,'Неизвестное действие');
+ }catch(e){return fail(e)}}
