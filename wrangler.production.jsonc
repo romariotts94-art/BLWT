@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "black-and-white-platform",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist/client"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "blwt-production",
+      "database_id": "07df0093-7a08-47e8-8019-9b18feb11ce4"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "blwt-uploads"
+    }
+  ],
+  "routes": [
+    { "pattern": "blackandwhite-mos.ru/*", "zone_name": "blackandwhite-mos.ru" },
+    { "pattern": "www.blackandwhite-mos.ru/*", "zone_name": "blackandwhite-mos.ru" }
+  ],
+  "vars": {
+    "AUTH_FROM": "noreply@blackandwhite-mos.ru"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

@@ -22,4 +22,53 @@
 @media(prefers-reduced-motion:reduce){.bw-marketing *,.bw-marketing *:before,.bw-marketing *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.bw-service-cards>button:hover,.bw-step-buttons>button:hover{transform:none}.pencil-lines path{stroke-dashoffset:0}}
 
 .bw-account-icon{display:none}
+.bw-service-pills{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;margin:0 -8px 27px;padding:4px 8px 12px;scroll-snap-type:x proximity;scrollbar-color:#91a57b #33442f;scrollbar-width:thin}
+.bw-service-pills button{flex:0 0 auto;scroll-snap-align:start;white-space:nowrap}
+.bw-service-pills::-webkit-scrollbar{height:7px}
+.bw-service-pills::-webkit-scrollbar-track{background:#33442f;border-radius:10px}
+.bw-service-pills::-webkit-scrollbar-thumb{background:#91a57b;border-radius:10px}
 @media(max-width:600px){.public-header .header-actions{gap:6px}.public-header .bw-account{width:36px;min-width:36px;height:36px;padding:0;justify-content:center}.bw-account-label,.bw-account-arrow{display:none}.bw-account-icon{display:block}.public-header .bw-header-calc{font-size:11px;padding:10px 9px}.public-header .header-actions .mobile-toggle{width:30px;min-width:30px;padding:3px}}
+.bw-service-cards{display:flex;overflow-x:auto;overflow-y:visible;gap:14px;padding:10px 8px 18px;margin:0 -8px;scroll-snap-type:x proximity;scrollbar-color:#a8b99a #edf1e3;scrollbar-width:thin}
+.bw-service-cards>button{flex:0 0 248px;scroll-snap-align:start}
+.bw-service-cards::-webkit-scrollbar{height:8px}
+.bw-service-cards::-webkit-scrollbar-track{background:#edf1e3;border-radius:10px}
+.bw-service-cards::-webkit-scrollbar-thumb{background:#a8b99a;border-radius:10px}
+@media(max-width:600px){.bw-service-cards{gap:10px;padding-bottom:15px}.bw-service-cards>button,.bw-service-cards>button:last-child{display:flex;flex:0 0 235px;min-height:225px;grid-column:auto;grid-template-columns:none;gap:0}}
+.bw-service-cards>button{isolation:isolate;overflow:hidden}
+.bw-service-card-art{display:block;width:100%;height:31px;flex:0 0 31px}
+.bw-service-card-art>svg{position:relative;z-index:2;transition:opacity .3s}
+.bw-service-card-art>img{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity .3s;pointer-events:none}
+.bw-service-cards>button:after{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,#101c1426,#101c148c 45%,#101c14c9);opacity:0;transition:opacity .3s;pointer-events:none}
+.bw-service-cards>button>h3,.bw-service-cards>button>p,.bw-service-cards>button>strong{position:relative;z-index:2;transition:color .3s}
+.bw-service-cards .bw-card-number{z-index:2;transition:color .3s}
+.bw-service-cards>button:is(:hover,:focus-visible) .bw-service-card-art>img,.bw-service-cards>button:is(:hover,:focus-visible):after{opacity:1}
+.bw-service-cards>button:is(:hover,:focus-visible) .bw-service-card-art>svg{opacity:0}
+.bw-service-cards>button:is(:hover,:focus-visible)>h3,.bw-service-cards>button:is(:hover,:focus-visible)>p,.bw-service-cards>button:is(:hover,:focus-visible)>strong,.bw-service-cards>button:is(:hover,:focus-visible) .bw-card-number{color:#fff}
+.bw-sketch-photo{overflow:hidden}
+.bw-service-comparison{position:absolute;inset:0;visibility:hidden;overflow:hidden;background:#e0e5d7}
+.bw-service-comparison.is-visible{visibility:visible}
+.bw-service-comparison>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bw-service-after{opacity:0}
+.bw-service-comparison.is-clean .bw-service-after{opacity:1;transition:opacity .8s ease}
+.bw-service-photo-label{position:absolute;top:20px;left:20px;padding:8px 12px;border-radius:30px;background:#f8faf0eb;color:#293723;font-size:12px;font-weight:600;backdrop-filter:blur(8px)}
+.bw-service-cleaning-progress{position:absolute;right:16px;top:12px;display:grid;grid-template-columns:72px 80px;gap:3px 8px;align-items:center;color:#fff;pointer-events:none}
+.bw-service-cleaning-progress>span{grid-column:1/-1;grid-row:2;justify-self:end;font-size:10px;font-weight:500;padding:6px 9px;border-radius:20px;background:#18271bcc;backdrop-filter:blur(4px);white-space:nowrap}
+.bw-cleaning-kitten{grid-column:1;grid-row:1;width:72px;height:96px;background:url('/media/cleaning-kitten-wiping.png') 0 0/400% 100% no-repeat;filter:drop-shadow(0 2px 2px #14201330);animation:bwKittenWipe 1.2s steps(1,end) infinite}
+.bw-cleaning-kitten-sweeping{background-image:url('/media/cleaning-kitten-sweeping.png')}
+.bw-cleaning-kitten-glass{background-image:url('/media/cleaning-kitten-glass.png')}
+.bw-cleaning-kitten-dusting{background-image:url('/media/cleaning-kitten-dusting.png')}
+.bw-cleaning-kitten-vacuuming{background-image:url('/media/cleaning-kitten-vacuuming.png')}
+@keyframes bwKittenWipe{0%,100%{background-position:0 0}25%{background-position:33.333333% 0}50%{background-position:66.666667% 0}75%{background-position:100% 0}}
+.bw-cleaning-ring{grid-column:2;grid-row:1;position:relative;width:80px;height:80px;border-radius:50%;background:#18271bd9;box-shadow:0 3px 12px #15221926;backdrop-filter:blur(4px)}
+.bw-cleaning-ring>svg{display:block;width:100%;height:100%;overflow:visible}
+.bw-ring-track{fill:none;stroke:#ffffff30;stroke-width:3}
+.bw-ring-fill{fill:none;stroke:url(#bw-cleaning-ring-color);stroke-width:3;stroke-linecap:round;transform:rotate(-90deg);transform-origin:26px 26px}
+.bw-cleaning-ring>strong{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:2px;font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.4px}
+.bw-cleaning-ring>strong>small{font-size:12px;font-weight:400;letter-spacing:0}
+.bw-service-comparison.is-clean .bw-service-cleaning-progress{opacity:0;transform:translateY(-5px);transition:opacity .5s .6s,transform .5s .6s;pointer-events:none}
+.bw-service-photo-note{position:absolute;left:20px;bottom:16px;padding:3px 6px;border-radius:4px;background:#1f2b1db3;color:#fff;font-size:10px;opacity:0}
+.bw-service-comparison.is-clean .bw-service-photo-note{opacity:1;transition:opacity .4s .9s}
+@media(max-width:600px){.bw-service-cleaning-progress{right:12px;top:10px;grid-template-columns:54px 66px;gap:3px 6px}.bw-service-cleaning-progress>span{font-size:9px;padding:5px 7px}.bw-cleaning-kitten{width:54px;height:72px}.bw-cleaning-ring{width:66px;height:66px}.bw-cleaning-ring>strong{font-size:20px}.bw-service-photo-label{left:14px;top:14px}}
+.bw-service-cards>button{flex-basis:calc((100% - 56px)/5)}
+@media(max-width:1000px){.bw-service-cards>button{flex-basis:calc((100% - 28px)/3)}}
+@media(max-width:600px){.bw-service-cards>button,.bw-service-cards>button:last-child{flex-basis:calc((100% - 10px)/2)}}

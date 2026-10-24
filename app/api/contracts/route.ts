@@ -1,0 +1,18 @@
+import { z } from 'zod';
+import { all, currentUser, event, fail, guardOrigin, HttpError, json, now, one, orderAccess, run, uid } from '../../../lib/server';
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+function bodyFor(o: any) {
+  const total = o.quote?.total ? `${new Intl.NumberFormat('ru-RU').format(o.quote.total)} ₽` : 'по индивидуальной смете';
+  return `ТИПОВОЙ ДОГОВОР ОКАЗАНИЯ КЛИНИНГОВЫХ УСЛУГ\n\nЗаказ: BW-${String(o.id).slice(0, 6).toUpperCase()}\nАдрес: ${o.address || 'указывается в карточке заказа'}\nДата и время: ${o.date || 'уточняется'} ${o.time || ''}\nЦена: ${total}\n\n1. ПРЕДМЕТ\nОператор организует, а Заказчик принимает и оплачивает клининговые услуги по заказу в приложении Black & White. Состав работ, адрес, дата, время и цена фиксируются в карточке заказа.\n\n2. ПОРЯДОК ОКАЗАНИЯ\nИсполнитель выполняет согласованный перечень работ бережно и в согласованный срок. Дополнительные работы выполняются только после отдельного согласования цены и времени.\n\n3. ОПЛАТА, ОТМЕНА И ПРЕТЕНЗИИ\nЦена указывается в карточке заказа. Заказчик вправе отказаться от услуги с оплатой фактически понесённых расходов. Замечания по качеству направляются через карточку заказа и рассматриваются Оператором.\n\n4. ПЕРСОНАЛЬНЫЕ ДАННЫЕ И ЭФИР\nОбработка персональных данных производится для расчёта, связи, организации и подтверждения услуги. Эфир включается только при отдельном согласии клиента и назначенного сотрудника; запись и звук по умолчанию выключены.\n\n5. ПРАВОВАЯ ОСНОВА\nПроект подготовлен с учётом статей 779–783 и 782 ГК РФ, статьи 32 Закона РФ «О защите прав потребителей», статей 6 и 9 Федерального закона № 152-ФЗ «О персональных данных» и статьи 152.1 ГК РФ. Перед публичным запуском Оператор заполняет реквизиты и проверяет текст с юристом.`;
+}
+
+export async function GET(req: Request) {
+ try { const u=await currentUser();const orderId=new URL(req.url).searchParams.get('order');if(!orderId)throw new HttpError(400,'Не указан заказ');const o=await orderAccess(orderId,u);
+ if(u.role!=='admin'&&o.clientId!==u.id){const a=await one("SELECT id,version,body,body_hash,state,accepted_at FROM worker_agreements WHERE order_id=? AND worker_id=? AND state<>'void' ORDER BY created DESC LIMIT 1",orderId,u.id);if(!a)throw new HttpError(404,'Договор исполнителя не сформирован');return json(a);}
+ let contract=await one('SELECT * FROM contracts WHERE order_id=?',orderId);if(!contract){const t=now();await run('INSERT INTO contracts(id,order_id,version,body,created,updated) VALUES(?,?,?,?,?,?) ON CONFLICT(order_id) DO NOTHING',uid(),orderId,'1.0',bodyFor(o),t,t);contract=await one('SELECT * FROM contracts WHERE order_id=?',orderId);}
+ return json(u.role==='admin'?contract:{id:contract.id,order_id:contract.order_id,version:contract.version,body:contract.body,client_accepted_at:contract.client_accepted_at,created:contract.created});
+ }catch(e){return fail(e)}
+}
+export async function POST(req:Request){try{guardOrigin(req);const u=await currentUser(),b=z.object({order:z.string().uuid(),role:z.literal('client')}).parse(await req.json()),o=await orderAccess(b.order,u);if(o.clientId!==u.id)throw new HttpError(403,'Подтверждает только заказчик');const t=now();await run('INSERT INTO contracts(id,order_id,version,body,created,updated) VALUES(?,?,?,?,?,?) ON CONFLICT(order_id) DO NOTHING',uid(),b.order,'1.0',bodyFor(o),t,t);await run('UPDATE contracts SET client_accepted_by=?,client_accepted_at=?,updated=? WHERE order_id=?',u.id,t,t,b.order);await event(b.order,u.id,'Заказчик согласовал договор');return json({ok:true,acceptedAt:t});}catch(e){return fail(e)}}

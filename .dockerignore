@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+!.env.example
+node_modules
+.output
+dist
+data
+.wrangler
+.sites-runtime
+.openai
+pages-dist
+coverage

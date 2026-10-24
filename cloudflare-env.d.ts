@@ -1,1 +1,1 @@
-declare namespace Cloudflare { interface Env { DB?: D1Database; BUCKET?: R2Bucket; ADMIN_EMAILS?: string; TURN_URLS?:string; TURN_USERNAME?:string; TURN_CREDENTIAL?:string; } }
+declare namespace Cloudflare { interface Env { DB?: D1Database; BUCKET?: R2Bucket; AUTH_FROM?: string; AUTH_SECRET?: string; ADMIN_EMAILS?: string; SMTP_HOST?: string; SMTP_PORT?: string; SMTP_USER?: string; SMTP_PASSWORD?: string; TURN_URLS?:string; TURN_USERNAME?:string; TURN_CREDENTIAL?:string; } }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import {preferencesSchema} from './care-policy';
 export const services = {
   standard:{name:'Поддерживающая',description:'Свежесть и порядок на каждый день',rate:90,min:3900,speed:25},
   deep:{name:'Генеральная',description:'Каждый угол, каждая поверхность',rate:190,min:9500,speed:12},
@@ -159,9 +160,9 @@ export function normalizeRates(saved:any={}){
 export const reviewSchema=z.object({rating:z.number().int().min(1).max(5),name:z.string().trim().min(2).max(40),text:z.string().trim().min(20).max(1500),publishConsent:z.boolean()});
 export function publicReviews(records:any[]){return records.filter(o=>o.status==='completed'&&o.review?.publishConsent===true).map(o=>({name:o.review.name,rating:o.review.rating,text:o.review.text,service:o.service,date:o.review.created}));}
 
-export const statuses:Record<string,string>={requested:'Новая заявка',offered:'Подбор команды',assigned:'Подтверждён',en_route:'Команда в пути',in_progress:'Уборка идёт',review:'Приёмка',completed:'Завершён',cancelled:'Отменён'};
+export const statuses:Record<string,string>={requested:'Новая заявка',offered:'Подбор сотрудников',contract_pending:'Подтверждение договора',admin_review:'Проверка назначения',assigned:'Подтверждён',en_route:'Команда в пути',in_progress:'Уборка идёт',review:'Приёмка',completed:'Завершён',cancelled:'Отменён'};
 export const steps=['requested','offered','assigned','en_route','in_progress','review','completed'];
-export const transitions:Record<string,string[]>={requested:['offered','cancelled'],offered:['offered','assigned','cancelled'],assigned:['en_route','cancelled'],en_route:['in_progress','cancelled'],in_progress:['review'],review:['completed','in_progress'],completed:[],cancelled:[]};
+export const transitions:Record<string,string[]>={requested:['offered','cancelled'],offered:['offered','contract_pending','cancelled'],contract_pending:['cancelled'],admin_review:['cancelled'],assigned:['en_route','cancelled'],en_route:['in_progress','cancelled'],in_progress:['review'],review:['completed','in_progress'],completed:[],cancelled:[]};
 export const quoteSchema=z.object({service:z.enum(['standard','deep','renovation','office','custom']),area:z.number().min(15).max(10000),dirt:z.number().int().min(0).max(2),frequency:z.number().int().min(0).max(2),urgent:z.boolean(),extras:z.record(z.number().int().min(0).max(30)).refine(v=>Object.keys(v).every(k=>k in extras),'Неизвестная дополнительная услуга'),workers:z.number().int().min(0).max(12)});
 export type QuoteInput=z.infer<typeof quoteSchema>;
 export function calculate(input:QuoteInput,rates:any=defaultRates){
@@ -177,7 +178,7 @@ export function calculate(input:QuoteInput,rates:any=defaultRates){
  const cost=payroll+transport+video+supplies+overhead+taxReserve;
  return {base,multiplier,additions,total,personHours,workers,hours,payroll,transport,video,supplies,overhead,taxReserve,cost,contribution:total-cost,margin:total?Math.round((total-cost)/total*100):0,needsEstimate:p.service==='custom',version:rates.version};
 }
-export const bookingSchema=quoteSchema.extend({name:z.string().trim().min(2).max(100),phone:z.string().regex(/^\+?[\d\s()\-]{10,22}$/,'Укажите корректный телефон'),address:z.string().trim().min(8).max(400),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),time:z.string().regex(/^(0[8-9]|1\d|20):[03]0$/),notes:z.string().max(2000),liveConsent:z.boolean(),terms:z.literal(true)});
+export const bookingSchema=quoteSchema.extend({preferences:preferencesSchema,name:z.string().trim().min(2).max(100),phone:z.string().regex(/^\+?[\d\s()\-]{10,22}$/,'Укажите корректный телефон'),address:z.string().trim().min(8).max(400),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>Number.isFinite(Date.parse(v+'T12:00:00Z'))&&new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v,'Укажите существующую дату'),time:z.string().regex(/^(0[8-9]|1\d|20):[03]0$/),notes:z.string().max(2000),liveConsent:z.boolean(),terms:z.literal(true)});
 export const checklist=['Полы и плинтусы','Пыль и поверхности','Кухня и рабочие зоны','Санузлы и сантехника','Зеркала и стекло','Мусор и финальная проверка'];
 export const money=(n:number)=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:0}).format(n);
 export function publicQuote(q:any){const {payroll,transport,video,supplies,overhead,taxReserve,cost,contribution,margin,...rest}=q;return rest;}
