@@ -2,6 +2,10 @@
 
 Полная копия проекта: публичная витрина, сервер, личный кабинет, админка, CRM, схема базы данных и исходные медиа.
 
+Актуальная версия хранится в ветке `main` репозитория `romariotts94-art/BLWT`.
+Отправка изменений в GitHub не публикует сайт автоматически. GitHub Pages можно запустить отдельно вручную.
+Для переноса на другой компьютер см. [инструкцию запуска](docs/LOCAL-START.md).
+
 - GitHub Pages: https://romariotts94-art.github.io/BLWT/
 - Серверный сайт: https://black-and-white-cleaning.navy-ant-8163.chatgpt.site
 
@@ -23,7 +27,7 @@ npm run dev        # полный серверный проект, локаль�
 npm run build      # серверная сборка Vinext / Cloudflare
 ```
 
-После загрузки файлов откройте Settings → Pages → Build and deployment → GitHub Actions. Затем запускается workflow `.github/workflows/pages.yml`; адрес будет `https://romariotts94-art.github.io/BLWT/`.
+При необходимости отдельной публикации откройте Settings → Pages → Build and deployment → GitHub Actions, затем вручную запустите workflow `.github/workflows/pages.yml`. Само обновление `main` публикацию не запускает.
 
 ## Что сохранено
 

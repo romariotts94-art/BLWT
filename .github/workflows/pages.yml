@@ -1,7 +1,5 @@
 name: Publish Black and White to GitHub Pages
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

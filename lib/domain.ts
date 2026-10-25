@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import {cleaningCatalog} from './cleaning-catalog';
 import {preferencesSchema} from './care-policy';
 export const services = {
   standard:{name:'Поддерживающая',description:'Свежесть и порядок на каждый день',rate:90,min:3900,speed:25},
@@ -163,7 +164,7 @@ export function publicReviews(records:any[]){return records.filter(o=>o.status==
 export const statuses:Record<string,string>={requested:'Новая заявка',offered:'Подбор сотрудников',contract_pending:'Подтверждение договора',admin_review:'Проверка назначения',assigned:'Подтверждён',en_route:'Команда в пути',in_progress:'Уборка идёт',review:'Приёмка',completed:'Завершён',cancelled:'Отменён'};
 export const steps=['requested','offered','assigned','en_route','in_progress','review','completed'];
 export const transitions:Record<string,string[]>={requested:['offered','cancelled'],offered:['offered','contract_pending','cancelled'],contract_pending:['cancelled'],admin_review:['cancelled'],assigned:['en_route','cancelled'],en_route:['in_progress','cancelled'],in_progress:['review'],review:['completed','in_progress'],completed:[],cancelled:[]};
-export const quoteSchema=z.object({service:z.enum(['standard','deep','renovation','office','custom']),area:z.number().min(15).max(10000),dirt:z.number().int().min(0).max(2),frequency:z.number().int().min(0).max(2),urgent:z.boolean(),extras:z.record(z.number().int().min(0).max(30)).refine(v=>Object.keys(v).every(k=>k in extras),'Неизвестная дополнительная услуга'),workers:z.number().int().min(0).max(12)});
+export const quoteSchema=z.object({catalogService:z.string().refine(id=>cleaningCatalog.some(s=>s.id===id),'Неизвестный вид уборки').optional(),service:z.enum(['standard','deep','renovation','office','custom']),area:z.number().min(15).max(10000),dirt:z.number().int().min(0).max(2),frequency:z.number().int().min(0).max(2),urgent:z.boolean(),extras:z.record(z.number().int().min(0).max(30)).refine(v=>Object.keys(v).every(k=>k in extras),'Неизвестная дополнительная услуга'),workers:z.number().int().min(0).max(12)});
 export type QuoteInput=z.infer<typeof quoteSchema>;
 export function calculate(input:QuoteInput,rates:any=defaultRates){
  rates=normalizeRates(rates);
