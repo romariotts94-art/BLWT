@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       await transporter.sendMail({
         from: (env as any).AUTH_FROM || smtpUser,
         to: normalizedEmail,
-        subject: "Код входа — Black and White",
+        subject: "Код входа — Black to White",
         text: `Ваш код входа: ${code}. Он действует 10 минут. Если вы не запрашивали код, проигнорируйте письмо.`,
       });
     } catch (error) {

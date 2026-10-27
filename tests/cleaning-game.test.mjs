@@ -140,5 +140,6 @@ test('game UI does not include tool inventory, target markers, matching highligh
   assert.equal(ui.includes(forbidden),false,forbidden);
   assert.equal(css.includes(forbidden),false,forbidden);
  }
- assert.ok(ui.includes('ЗАРПЛАТА ПОЛУЧЕНА'));
+ assert.ok(ui.includes('НАГРАДА В ИГРЕ'));
+ assert.ok(ui.includes('BW-монет'));
 });

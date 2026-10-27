@@ -11,7 +11,8 @@
     {
       "binding": "DB",
       "database_name": "blwt-production",
-      "database_id": "07df0093-7a08-47e8-8019-9b18feb11ce4"
+      "database_id": "07df0093-7a08-47e8-8019-9b18feb11ce4",
+      "migrations_dir": "./db/d1"
     }
   ],
   "r2_buckets": [

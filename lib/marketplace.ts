@@ -116,7 +116,7 @@ export async function marketSnapshot(u:any,url:URL){
  if(selected){
  const client=selected.clientId===u.id,isOffer=!selected.crew.includes(u.id)&&u.role!=='admin'&&!client;
  result.media=(await all('SELECT id,name,mime,purpose,created FROM media WHERE order_id=? ORDER BY created',id)).filter(m=>!isOffer||m.purpose==='brief').map(m=>({...m,name:u.role==='admin'?m.name:'Фото заказа'}));
- result.messages=isOffer?[]:(await all('SELECT m.*,p.role AS author_role FROM messages m LEFT JOIN members p ON p.id=m.user_id WHERE order_id=? ORDER BY created LIMIT 300',id)).map(m=>u.role==='admin'?m:{id:m.id,text:client?(m.user_id===u.id?m.text:safeWorkerText(m.text,m.name)):safeWorkerText(m.text,selected.name),created:m.created,user_id:m.user_id===u.id?u.id:null,name:m.user_id===u.id?'Вы':client?(m.author_role==='admin'?'Поддержка Black & White':'Сотрудник Black & White'):(m.author_role==='client'?'Заказчик':'Поддержка Black & White')});
+ result.messages=isOffer?[]:(await all('SELECT m.*,p.role AS author_role FROM messages m LEFT JOIN members p ON p.id=m.user_id WHERE order_id=? ORDER BY created LIMIT 300',id)).map(m=>u.role==='admin'?m:{id:m.id,text:client?(m.user_id===u.id?m.text:safeWorkerText(m.text,m.name)):safeWorkerText(m.text,selected.name),created:m.created,user_id:m.user_id===u.id?u.id:null,name:m.user_id===u.id?'Вы':client?(m.author_role==='admin'?'Поддержка Black to White':'Сотрудник Black to White'):(m.author_role==='client'?'Заказчик':'Поддержка Black to White')});
  if(u.role==='admin'||selected.crew.includes(u.id)){result.agreement=await one("SELECT * FROM worker_agreements WHERE order_id=? AND state<>'void' ORDER BY created DESC LIMIT 1",id);}
  }
  return result;

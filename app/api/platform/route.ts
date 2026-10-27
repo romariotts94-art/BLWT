@@ -1,9 +1,9 @@
 import {marketSnapshot,marketAction,marketActions} from '../../../lib/marketplace';
 import { z } from 'zod';
-import { all,one,run,uid,now,currentUser,requireAdmin,rates,orderAccess,expose,unpack,updateOrder,event,notify,admins,guardOrigin,fail,json,db,transaction,HttpError,ownerEmails } from '../../../lib/server';
+import { all,one,run,uid,now,currentUser,requireAdmin,rates,orderAccess,expose,unpack,updateOrder,event,notify,admins,guardOrigin,fail,json,db,transaction,HttpError,ownerEmails,demoReviews } from '../../../lib/server';
 import { bookingSchema,quoteSchema,calculate,publicQuote,checklist,transitions,overlaps,defaultRates,reviewSchema,publicReviews } from '../../../lib/domain';
 export const dynamic='force-dynamic';
-export async function GET(req:Request){try{const url=new URL(req.url);if(url.searchParams.get('public')==='1'){const r=await rates();const records=await all("SELECT * FROM orders WHERE status='completed' ORDER BY updated DESC LIMIT 100");return json({rates:r,reviews:publicReviews(records.map(unpack))});}
+export async function GET(req:Request){try{const url=new URL(req.url);if(url.searchParams.get('public')==='1'){const r=await rates();const records=await all("SELECT * FROM orders WHERE status='completed' ORDER BY updated DESC LIMIT 100");return json({rates:r,reviews:publicReviews(records.map(unpack)),demoReviews:await demoReviews()});}
  const u=await currentUser();return json(await marketSnapshot(u,url));
  }catch(e){return fail(e)}}
 export async function POST(req:Request){try{guardOrigin(req);const b=z.record(z.any()).parse(await req.json());if(b.action==='quote'){return json(publicQuote(calculate(quoteSchema.parse(b.input),await rates())));}

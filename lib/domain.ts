@@ -2,11 +2,11 @@ import { z } from 'zod';
 import {cleaningCatalog} from './cleaning-catalog';
 import {preferencesSchema} from './care-policy';
 export const services = {
-  standard:{name:'Поддерживающая',description:'Свежесть и порядок на каждый день',rate:90,min:3900,speed:25},
-  deep:{name:'Генеральная',description:'Каждый угол, каждая поверхность',rate:190,min:9500,speed:12},
-  renovation:{name:'После ремонта',description:'От строительной пыли — к новому дому',rate:230,min:11500,speed:10},
-  office:{name:'Уборка офиса',description:'Пространство, в котором приятно работать',rate:55,min:4500,speed:35},
-  custom:{name:'Особый объект',description:'Склад, ресторан, фасад — по смете',rate:0,min:0,speed:20},
+  standard:{name:'Поддерживающая',description:'Регулярный уход за доступными поверхностями, полом, кухней и санузлом.',rate:90,min:3900,speed:25},
+  deep:{name:'Генеральная',description:'Более подробная уборка, включая доступные труднодоступные зоны.',rate:190,min:9500,speed:12},
+  renovation:{name:'После ремонта',description:'Удаление строительной пыли и согласованных следов ремонта.',rate:230,min:11500,speed:10},
+  office:{name:'Уборка офиса',description:'Рабочие зоны, общие пространства и санузлы по согласованному плану.',rate:55,min:4500,speed:35},
+  custom:{name:'Индивидуальная смета',description:'Для коммерческих и нестандартных объектов — после оценки объёма работ.',rate:0,min:0,speed:20},
 };
 export const extras = {
   "windows": {

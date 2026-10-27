@@ -31,6 +31,7 @@ export function ownerEmails(){
 }
 export function isOwner(u:any){return ownerEmails().includes(String(u?.email||'').toLowerCase());}
 export async function rates(){const r=await one('SELECT value FROM settings WHERE key=?','rates');return normalizeRates(r?JSON.parse(r.value):defaultRates);}
+export async function demoReviews(){if((env as any).DEMO_REVIEWS_ENABLED!=='true')return [];return all('SELECT client_id,client_name AS name,rating,text,service,created AS date FROM demo_reviews ORDER BY sort_order');}
 export function unpack(o:any){return {...JSON.parse(o.details),id:o.id,clientId:o.client_id,status:o.status,crew:JSON.parse(o.crew),target:o.target,revision:o.revision,created:o.created,updated:o.updated,marketplaceVersion:o.marketplace_version||0,cityId:o.city_id||null,startAt:Number(o.start_at),endAt:Number(o.end_at),grossCents:Number(o.gross_cents??0),payoutCents:o.payout_cents==null?undefined:Number(o.payout_cents),assignedWorkerId:o.assigned_worker_id||null,claimUntil:o.claim_until?Number(o.claim_until):null};}
 export async function orderAccess(id:string,u:any,allowOffer=false){const {marketAccess}=await import('./marketplace');return marketAccess(id,u,allowOffer);}
 export function expose(o:any,u:any){return projectOrder(o,u);}
