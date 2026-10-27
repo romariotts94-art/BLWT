@@ -2,8 +2,8 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {Camera,CheckCircle2,LockKeyhole,MessageCircle,Pause,Play,ShieldCheck,Video} from 'lucide-react';
 const clips=[
- {src:'/media/vision-cleaning.mp4',poster:'/media/vision-cleaning-poster.jpg',name:'Уборка комнаты',credit:'Liliana Drew / Pexels',source:'https://www.pexels.com/video/a-woman-is-using-a-vacuum-cleaner-in-her-room-9473228/',position:'center'},
- {src:'/media/vision-dusting.mp4',poster:'/media/vision-dusting-poster.jpg',name:'Внимание к деталям',credit:'Mixkit',source:'https://mixkit.co/free-stock-video/woman-cleaning-her-house-dancing-43369/',position:'center'},
+ {src:'/media/vision-cleaning.mp4',poster:'/media/vision-cleaning-poster.webp',name:'Уборка комнаты',credit:'Liliana Drew / Pexels',source:'https://www.pexels.com/video/a-woman-is-using-a-vacuum-cleaner-in-her-room-9473228/',position:'center'},
+ {src:'/media/vision-dusting.mp4',poster:'/media/vision-dusting-poster.webp',name:'Внимание к деталям',credit:'Mixkit',source:'https://mixkit.co/free-stock-video/woman-cleaning-her-house-dancing-43369/',position:'center'},
 ];
 export default function LiveCleaningDemo({benefit,screen,note}:{benefit:number;screen:string;note:string}){
  const [index,setIndex]=useState(0),[loaded,setLoaded]=useState(false),[visible,setVisible]=useState(false),[enabled,setEnabled]=useState(false),[playing,setPlaying]=useState(false),[failed,setFailed]=useState(false);

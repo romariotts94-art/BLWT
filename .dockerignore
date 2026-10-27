@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+.DS_Store
+*.dump
 node_modules
 .output
 dist
@@ -11,3 +13,8 @@ data
 .openai
 pages-dist
 coverage
+work
+outputs
+private-backups
+tests
+docs

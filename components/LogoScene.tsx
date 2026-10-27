@@ -2,7 +2,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {LOGO_SCENE_DURATION,LOGO_SCENE_INTERVAL,LOGO_SCENE_REST,logoSceneFrame,logoSceneGeometry} from '../lib/logo-animation';
 
-const SPRITES=['/media/cleaning-kitten-logo-choreography-v4.png','/media/cleaning-kitten-logo-heart.png','/media/cleaning-kitten-logo-tools-v4.png'];
+const SPRITES=['/media/cleaning-kitten-logo-choreography-v4.webp','/media/cleaning-kitten-logo-heart.webp','/media/cleaning-kitten-logo-tools-v4.webp'];
 /** Animate the existing brand DOM: the font, symbol, accessible name and link stay intact. */
 export default function LogoScene({children,enabled=true}:{children:React.ReactNode;enabled?:boolean}){
  const root=useRef<HTMLSpanElement>(null),ink=useRef<HTMLSpanElement>(null),cat=useRef<HTMLSpanElement>(null),props=useRef<HTMLSpanElement>(null);

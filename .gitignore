@@ -52,6 +52,8 @@ next-env.d.ts
 /node_modules/
 /.output/
 /data/
+/private-backups/
+*.dump
 # Checkout-local execution profile and tool state; never publish them.
 /.sites-runtime/
 /.agents/

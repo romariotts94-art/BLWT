@@ -9,12 +9,13 @@ export const runtime = "nodejs";
 const inputSchema = z.object({
   email: z.string().trim().email().max(254),
   code: z.string().regex(/^\d{6}$/),
+  role: z.enum(["client", "cleaner"]).optional(),
 });
 
 export async function POST(req: Request) {
   try {
     guardOrigin(req);
-    const { email, code } = inputSchema.parse(await req.json());
+    const { email, code, role: requestedRole = "client" } = inputSchema.parse(await req.json());
     const normalizedEmail = email.toLowerCase();
     const secret = (env as any).AUTH_SECRET;
     if (!secret) throw new HttpError(503, "Вход по email ещё не настроен на сервере");
@@ -42,9 +43,17 @@ export async function POST(req: Request) {
     const id = crypto.randomUUID();
     const member = await env.DB?.prepare(
       "INSERT INTO members(id,email,name,role,team_id,active,created) VALUES(?,?,?,?,?,1,?) ON CONFLICT(email) DO UPDATE SET email=excluded.email RETURNING *",
-    ).bind(id, normalizedEmail, invite?.name || fallbackName || normalizedEmail, admin ? "admin" : invite?.role || "client", invite?.team_id || null, new Date().toISOString()).first<any>();
+    ).bind(id, normalizedEmail, invite?.name || fallbackName || normalizedEmail, admin ? "admin" : invite?.role || requestedRole, invite?.team_id || null, new Date().toISOString()).first<any>();
     if (!member) throw new HttpError(500, "Не удалось создать учётную запись");
     if (!member.active) throw new HttpError(403, "Доступ к аккаунту приостановлен администратором");
+    if (!admin && !invite && requestedRole === "cleaner" && member.role === "client") {
+      await env.DB?.prepare("UPDATE members SET role='cleaner' WHERE id=? AND role='client'").bind(member.id).run();
+      member.role = "cleaner";
+    }
+    if (["cleaner", "leader"].includes(member.role)) {
+      await env.DB?.prepare("INSERT INTO worker_profiles(member_id,updated) VALUES(?,?) ON CONFLICT(member_id) DO NOTHING")
+        .bind(member.id, new Date().toISOString()).run();
+    }
     if (admin && member.role !== "admin") {
       await env.DB?.prepare("UPDATE members SET role='admin' WHERE id=?").bind(member.id).run();
       member.role = "admin";

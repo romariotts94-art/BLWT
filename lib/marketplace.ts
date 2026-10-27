@@ -58,17 +58,18 @@ const eligibilityWhere=`
    AND occupied.status IN ('contract_pending','admin_review','assigned','en_route','in_progress','review') AND (occupied.claim_until IS NULL OR occupied.claim_until>?)
    AND COALESCE(occupied.start_at,EXTRACT(EPOCH FROM ((occupied.details::jsonb->>'date')||'T'||(occupied.details::jsonb->>'time')||':00+03:00')::timestamptz)*1000)<o.end_at+p.travel_minutes*60000
    AND COALESCE(occupied.end_at,EXTRACT(EPOCH FROM ((occupied.details::jsonb->>'date')||'T'||(occupied.details::jsonb->>'time')||':00+03:00')::timestamptz)*1000+(occupied.details::jsonb->'quote'->>'hours')::numeric*3600000)>o.start_at-p.travel_minutes*60000)
+ AND EXISTS(SELECT 1 FROM quality_attempts q WHERE q.worker_id=p.member_id AND q.passed=1 AND q.valid_until>?)
 `;
 export async function eligible(o:any,id:string,tx:Tx=read,at=Date.now()){
  if(o.marketplaceVersion!==1||o.status!=='offered')return false;
- return !!await tx.one(`SELECT 1 FROM orders o CROSS JOIN worker_profiles p JOIN members m ON m.id=p.member_id WHERE o.id=? AND p.member_id=? AND ${eligibilityWhere}`,o.id,id,at,at);
+ return !!await tx.one(`SELECT 1 FROM orders o CROSS JOIN worker_profiles p JOIN members m ON m.id=p.member_id WHERE o.id=? AND p.member_id=? AND ${eligibilityWhere}`,o.id,id,at,at,at);
 }
 export async function broadcast(tx:Tx,o:any){
  if(o.status!=='offered')return;
  const at=Date.now();await tx.run(`INSERT INTO notices(id,user_id,order_id,text,created,dedupe_key)
  SELECT gen_random_uuid()::text,p.member_id,o.id,?,?,('offer:'||o.id||':'||p.member_id)
  FROM orders o CROSS JOIN worker_profiles p JOIN members m ON m.id=p.member_id WHERE o.id=? AND ${eligibilityWhere} ON CONFLICT DO NOTHING`,
- `Новый заказ · ${o.city} · ${o.date}, ${o.time} · к получению ${o.payoutCents/100} ₽`,now(),o.id,at,at);
+ `Новый заказ · ${o.city} · ${o.date}, ${o.time} · к получению ${o.payoutCents/100} ₽`,now(),o.id,at,at,at);
 }
 async function notifyWorkerOffers(tx:Tx,workerId:string){
  const at=Date.now();
@@ -77,7 +78,7 @@ async function notifyWorkerOffers(tx:Tx,workerId:string){
    'Новый заказ · '||COALESCE(o.details::jsonb->>'city','город')||' · '||COALESCE(o.details::jsonb->>'date','')||', '||COALESCE(o.details::jsonb->>'time',''),
    ?,('offer:'||o.id||':'||p.member_id)
  FROM orders o CROSS JOIN worker_profiles p JOIN members m ON m.id=p.member_id
- WHERE p.member_id=? AND ${eligibilityWhere} ON CONFLICT DO NOTHING`,now(),workerId,at,at);
+ WHERE p.member_id=? AND ${eligibilityWhere} ON CONFLICT DO NOTHING`,now(),workerId,at,at,at);
 }
 export async function expireClaims(){
  // Every mutation and refresh performs bounded cleanup. No reservation depends on an open browser.
@@ -97,11 +98,11 @@ export async function marketSnapshot(u:any,url:URL){
  let rows:any[];
  if(u.role==='admin')rows=await all('SELECT * FROM orders ORDER BY created DESC LIMIT 1000');
  else if(u.role==='client')rows=await all('SELECT * FROM orders WHERE client_id=? ORDER BY created DESC LIMIT 1000',u.id);
- else {const at=Date.now();rows=await all(`SELECT o.* FROM orders o WHERE o.assigned_worker_id=? OR o.crew::jsonb @> ?::jsonb OR EXISTS(SELECT 1 FROM worker_profiles p JOIN members m ON m.id=p.member_id WHERE p.member_id=? AND ${eligibilityWhere}) ORDER BY o.created DESC LIMIT 1000`,u.id,JSON.stringify([u.id]),u.id,at,at);}
+ else {const at=Date.now();rows=await all(`SELECT o.* FROM orders o WHERE o.assigned_worker_id=? OR o.crew::jsonb @> ?::jsonb OR EXISTS(SELECT 1 FROM worker_profiles p JOIN members m ON m.id=p.member_id WHERE p.member_id=? AND ${eligibilityWhere}) ORDER BY o.created DESC LIMIT 1000`,u.id,JSON.stringify([u.id]),u.id,at,at,at);}
  const id=url.searchParams.get('order');let selected:any;if(id){selected=await marketAccess(validId(id),u,true);if(!rows.some(r=>r.id===id))rows.unshift(await one('SELECT * FROM orders WHERE id=?',id));}
  const result:any={user:u,orders:rows.map(unpack).map(o=>projectOrder(o,u)),people:[],teams:[],rates:await rates(),notifications:await all('SELECT * FROM notices WHERE user_id=? ORDER BY created DESC LIMIT 80',u.id),lessons};
  if(u.role==='admin'){
- result.matching=await all(`SELECT o.id,COUNT(*) AS count FROM orders o CROSS JOIN worker_profiles p JOIN members m ON m.id=p.member_id WHERE ${eligibilityWhere} GROUP BY o.id`,Date.now(),Date.now());
+ result.matching=await all(`SELECT o.id,COUNT(*) AS count FROM orders o CROSS JOIN worker_profiles p JOIN members m ON m.id=p.member_id WHERE ${eligibilityWhere} GROUP BY o.id`,Date.now(),Date.now(),Date.now());
  result.people=await all('SELECT id,email,name,role,team_id,active FROM members ORDER BY name');result.teams=await all('SELECT * FROM teams');result.invitations=await all('SELECT * FROM invitations');result.audit=await all('SELECT * FROM audit ORDER BY created DESC LIMIT 60');
  result.workers=(await all("SELECT p.*,m.name,m.email,m.active,m.role,c.name AS city,c.region,(SELECT MAX(valid_until) FROM quality_attempts q WHERE q.worker_id=p.member_id AND q.passed=1) AS training_until FROM worker_profiles p JOIN members m ON m.id=p.member_id LEFT JOIN cities c ON c.id=p.city_id WHERE m.role IN ('cleaner','leader') ORDER BY m.name")).map(profile);
  result.customers=await all('SELECT p.*,m.email,c.id AS city_id,c.name AS city,c.region,cc.last_order_at,(SELECT COUNT(*) FROM orders o WHERE o.client_id=p.member_id) AS order_count FROM customer_profiles p JOIN members m ON m.id=p.member_id LEFT JOIN customer_cities cc ON cc.member_id=p.member_id LEFT JOIN cities c ON c.id=cc.city_id ORDER BY p.updated DESC LIMIT 1000');

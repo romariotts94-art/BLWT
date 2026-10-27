@@ -2,9 +2,9 @@
 
 Создано встроенным imagegen. Финальные файлы находятся в проекте:
 
-- `public/media/rental-bedroom-before.png` — квартира после выезда гостей, 1536 × 1024.
-- `public/media/rental-bedroom-after.png` — тот же ракурс после уборки, 1536 × 1024.
-- `public/media/cleaning-kitten-towels.png` — прозрачный спрайт того же котика, складывающего полотенца, четыре кадра, 2172 × 724.
+- `public/media/rental-bedroom-before.webp` — квартира после выезда гостей, 1536 × 1024.
+- `public/media/rental-bedroom-after.webp` — тот же ракурс после уборки, 1536 × 1024.
+- `public/media/cleaning-kitten-towels.webp` — прозрачный спрайт того же котика, складывающего полотенца, четыре кадра, 2172 × 724.
 
 Подключение: `components/MarketingHome.tsx`, `app/marketing.css`. Существующий механизм показывает прогресс за 3000 мс и плавно открывает чистое фото. Для карточки посуточной аренды предусмотрены наведение, фокус клавиатуры и нажатие. Размеры карточек и основного блока сохранены.
 
@@ -20,6 +20,6 @@ Use case: precise-object-edit. Edit this EXACT apartment photograph into AFTER s
 
 ## Промпт котика
 
-Референс персонажа: `public/media/cleaning-kitten-wiping.png`. Прозрачный фон включён при генерации.
+Референс персонажа: `public/media/cleaning-kitten-wiping.webp`. Прозрачный фон включён при генерации.
 
 Use case: identity-preserve, animated website sprite sheet. Reference image is the EXACT established mascot identity and rendered cartoon style to keep: cute contemporary animated film black-and-white tuxedo kitten, huge green eyes, pink nose, white face blaze muzzle chest and paws, rounded black ears/body, fluffy soft fur, happy expression. Create ONE transparent PNG sprite sheet aspect ratio exactly 3:1, four equally spaced frames in a single horizontal row, each frame occupying one equal quarter with 8% safe transparent margins and identical camera, scale, foot baseline, head size and same pale mint little table position. New action: kitten folds a fresh white fluffy guest towel for a rental apartment. Frame1 both paws holding open white towel just above table, frame2 bringing one side over to fold, frame3 gently pressing the neatly folded towel with both paws and happy closed eyes, frame4 contentedly presenting neat small towel stack with open green eyes; continuous small gestures, no jumping positions. Show full kitten including feet and tail, complete table and towel entirely within EACH cell. No wiping cloth, no repair tools. Keep character EXACTLY same as reference, not a new cat. True transparent alpha background everywhere outside four isolated characters and tables; no colored outline, stray pixels, glows, checkered background, text, watermarks, borders, grid lines or cast floor shadows.

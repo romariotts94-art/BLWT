@@ -2,9 +2,9 @@
 
 Создано встроенным imagegen. Изображения проверены визуально до подключения.
 
-- `public/media/event-living-room-before.png` — гостиная после праздника.
-- `public/media/event-living-room-after.png` — тот же интерьер после уборки.
-- `public/media/cleaning-kitten-confetti.png` — четыре кадра того же котика со щёткой и совком на прозрачном фоне.
+- `public/media/event-living-room-before.webp` — гостиная после праздника.
+- `public/media/event-living-room-after.webp` — тот же интерьер после уборки.
+- `public/media/cleaning-kitten-confetti.webp` — четыре кадра того же котика со щёткой и совком на прозрачном фоне.
 
 Наведение и фокус на карточке запускают существующий трёхсекундный переход до/после; нажатие также выбирает услугу. Размеры и пропорции блоков сохранены.
 
@@ -20,7 +20,7 @@ Use case: precise-object-edit. Edit this EXACT photograph into AFTER event clean
 
 ## Промпт котика
 
-Референс: `public/media/cleaning-kitten-towels.png`.
+Референс: `public/media/cleaning-kitten-towels.webp`.
 
 Use case: identity-preserve. Create ONE animated website sprite sheet using this reference only for the exact mascot identity: same cute black-and-white tuxedo kitten, oversized green eyes, pink nose, white blaze muzzle chest paws, black fluffy ears and curved tail, modern animated-film 3D cartoon. New action: crouching happily, using a tiny mint hand brush to sweep colorful paper confetti into a small coral dustpan after a party. NO TABLE and no towels. Exactly four equal-width frames in ONE horizontal row, full image aspect ratio 3:1. Same kitten scale, body/head proportions, position, foot baseline and camera in all cells, all paws ears tail and tools entirely inside their cell with generous transparent padding. Frame1 brush poised to kitten's left beside a small pile of pastel confetti, other paw holds dustpan on ground to right. Frame2 brush pushes confetti toward dustpan. Frame3 brush reaches dustpan, confetti inside it, kitten happily squints. Frame4 kitten slightly raises filled dustpan proudly with green eyes open. Only a small deliberate group of 6-8 confetti pieces close to tools in each frame, not a spray of random dots. Crisp isolated silhouette with clean edges, no stray colored fragments, no floor/background, no glow, no checkered background, no captions, no borders. True transparent alpha PNG. Preserve the exact friendly cat identity from reference.
 
