@@ -1,4 +1,10 @@
 blackandwhite-mos.ru, www.blackandwhite-mos.ru {
   encode gzip zstd
-  reverse_proxy app:3000
+  handle /media/* {
+    root * /srv/black-and-white
+    file_server
+  }
+  handle {
+    reverse_proxy app:3000
+  }
 }

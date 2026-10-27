@@ -1,0 +1,14 @@
+/* Small vector scenes for the four booking steps; independent of marketing layout. */
+.bw-workflow-graphic{--wf-halo:#e8eedb;position:relative;width:100%;max-width:440px;margin-inline:auto;isolation:isolate;color:#8ba574;font-family:inherit;line-height:1.5}
+.bw-workflow-graphic--1{--wf-halo:#f0eadc}.bw-workflow-graphic--2{--wf-halo:#e4ecdf}.bw-workflow-graphic--3{--wf-halo:#e9e8ef}
+.bw-workflow-graphic>svg{display:block;width:100%;height:auto;overflow:visible}
+.bw-workflow-graphic .wf-label{font-family:inherit;font-size:11px;font-weight:500;fill:#536c46;letter-spacing:0}
+.bw-workflow-graphic .wf-heading{font-family:inherit;font-size:12px;font-weight:500;fill:#49643c;letter-spacing:0}
+.bw-workflow-graphic .wf-small{font-family:inherit;font-size:8px;font-weight:500;fill:#738568;letter-spacing:.8px}
+.bw-workflow-graphic .wf-accents{color:#9cb783}
+.bw-workflow-graphic .bw-workflow-graphic-caption{display:block;text-align:center;font-size:10px;font-weight:400;letter-spacing:.5px;line-height:1.7;color:#6c805c;margin-top:5px}
+.bw-workflow-graphic--compact{grid-column:1/-1;align-self:center;max-width:240px;height:132px;line-height:0;margin-block:-8px -2px}
+.bw-workflow-graphic--compact>svg{width:100%;height:100%;overflow:visible}
+.bw-workflow-graphic--compact .wf-accents{opacity:.7}
+@media(max-width:760px){.bw-workflow-graphic{max-width:350px}.bw-workflow-graphic--compact{height:112px;max-width:190px;margin-block:-4px -2px}.bw-workflow-graphic .bw-workflow-graphic-caption{font-size:9px;letter-spacing:.2px}}
+@media(prefers-reduced-motion:reduce){.bw-workflow-graphic,.bw-workflow-graphic *{animation:none!important;transition:none!important}}
