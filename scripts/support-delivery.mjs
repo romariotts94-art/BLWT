@@ -10,7 +10,7 @@ async function tick(){if(!token||!chats.length)return;const client=await pool.co
  const {rows}=await client.query(`SELECT d.*,s.ticket_id FROM support_delivery d JOIN support_messages s ON s.id=d.message_id WHERE d.delivered_at IS NULL AND d.next_attempt<$1 AND d.chat_id=ANY($2) ORDER BY d.next_attempt LIMIT 1 FOR UPDATE OF d SKIP LOCKED`,[Date.now(),chats]);
  for(const d of rows){try{
  const origin=process.env.PUBLIC_ORIGIN||'https://blackandwhite-mos.ru';
- const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:d.chat_id,text:`BLACK & WHITE · обращение ${d.ticket_id.slice(0,8)}\nНовое сообщение в поддержку.\n${origin}/#support`,disable_web_page_preview:true}),signal:AbortSignal.timeout(8000)});
+ const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:d.chat_id,text:`Black to White · обращение ${d.ticket_id.slice(0,8)}\nНовое сообщение в поддержку.\n${origin}/#support`,disable_web_page_preview:true}),signal:AbortSignal.timeout(8000)});
  const result=await r.json();if(!r.ok||!result.ok)throw Error('Telegram response '+r.status);
  await client.query('UPDATE support_delivery SET delivered_at=$1,attempts=attempts+1,last_error=\'\' WHERE id=$2',[new Date().toISOString(),d.id]);
  }catch{await client.query('UPDATE support_delivery SET attempts=attempts+1,next_attempt=$1,last_error=$2 WHERE id=$3',[Date.now()+Math.min(3600000,30000*2**Math.min(d.attempts,7)),'Telegram недоступен; запланирована повторная попытка',d.id]);}}

@@ -9,12 +9,12 @@ const baseTables = ["members", "invitations", "teams", "orders", "notices", "mes
 const baseColumns = {
   members: ["id", "email", "name", "role", "team_id", "active", "created"],
   invitations: ["email", "name", "role", "team_id"],
-  teams: ["id", "name", "leader_id"],
+  teams: ["id", "name", "skills", "created"],
   orders: ["id", "client_id", "status", "details", "crew", "target", "revision", "created", "updated"],
   notices: ["id", "user_id", "order_id", "text", "read", "created"],
   messages: ["id", "order_id", "user_id", "name", "text", "created"],
   audit: ["id", "order_id", "actor", "action", "created"],
-  settings: ["key", "value", "updated"],
+  settings: ["key", "value"],
   channels: ["id", "order_id", "worker_id", "viewer_id", "offer", "answer", "updated", "state"],
   media: ["id", "order_id", "user_id", "name", "mime", "created"],
 };
