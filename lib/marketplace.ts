@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { env } from 'cloudflare:workers';
 import { all,one,run,transaction,uid,now,HttpError,unpack,rates,requireAdmin,orderAccess,updateOrder,event,notify,admins } from './server';
 import { bookingSchema,calculate,checklist,services,extras,transitions,publicQuote } from './domain';
 import { cityById,cents,payoutFor,timeWindow,projectOrder,safeWorkerText,weekContext,lessons } from './marketplace-policy';
@@ -14,6 +15,13 @@ const workerLocalTime=(at:number,timezone:string)=>{
  return {date:`${values.year}-${values.month}-${values.day}`,minute:Number(values.hour)*60+Number(values.minute)};
 };
 const ruleDefaults={operator:'Black & White',requisites:'Будут заполнены позже',penaltyPercent:0,termsApproved:false,version:'placeholder-2026-10-21'};
+const isPostgresRuntime=typeof (env as any).DB?.transaction==='function';
+const quoteAcceptedSql=isPostgresRuntime
+ ? "(o.details::jsonb->>'quoteAccepted')::boolean"
+ : "json_extract(o.details,'$.quoteAccepted')=1";
+const crewMemberSql=isPostgresRuntime
+ ? "EXISTS(SELECT 1 FROM jsonb_array_elements_text(o.crew::jsonb) AS crew(value) WHERE crew.value=?)"
+ : "EXISTS(SELECT 1 FROM json_each(o.crew) WHERE value=?)";
 export async function marketRules(tx:Tx=read){const s=await tx.one("SELECT value FROM settings WHERE key='marketplace_rules'");return {...ruleDefaults,...parse(s?.value,{})};}
 async function log(tx:Tx,id:string|null,actor:string,action:string){await tx.run('INSERT INTO audit(id,order_id,actor,action,created) VALUES(?,?,?,?,?)',uid(),id,actor,action,now());}
 async function tell(tx:Tx,ids:string[],order:string|null,message:string){for(const id of new Set(ids))await tx.run('INSERT INTO notices(id,user_id,order_id,text,created) VALUES(?,?,?,?,?)',uid(),id,order,message,now());}
@@ -27,7 +35,7 @@ async function patch(tx:Tx,o:any,delta:any,actor:string,action:string){
 // Marketplace matching is intentionally simple: an active, verified worker in the
 // same city sees the offer. A conditional order update decides the first accept.
 const eligibilityWhere=`
- o.marketplace_version=1 AND o.status='offered' AND json_extract(o.details,'$.quoteAccepted')=1 AND o.start_at>?
+ o.marketplace_version=1 AND o.status='offered' AND ${quoteAcceptedSql} AND o.start_at>?
  AND m.active=1 AND m.role IN ('cleaner','leader') AND p.enabled=1 AND p.verified=1
  AND p.city_id=o.city_id
  AND NOT EXISTS(SELECT 1 FROM order_skips s WHERE s.order_id=o.id AND s.worker_id=p.member_id)
@@ -64,7 +72,7 @@ export async function marketSnapshot(u:any,url:URL){
  let rows:any[];
  if(u.role==='admin')rows=await all('SELECT * FROM orders ORDER BY created DESC LIMIT 1000');
  else if(u.role==='client')rows=await all('SELECT * FROM orders WHERE client_id=? ORDER BY created DESC LIMIT 1000',u.id);
- else {const at=Date.now();rows=await all(`SELECT o.* FROM orders o WHERE o.assigned_worker_id=? OR EXISTS(SELECT 1 FROM json_each(o.crew) WHERE value=?) OR EXISTS(SELECT 1 FROM worker_profiles p JOIN members m ON m.id=p.member_id WHERE p.member_id=? AND ${eligibilityWhere}) ORDER BY o.created DESC LIMIT 1000`,u.id,u.id,u.id,at);}
+ else {const at=Date.now();rows=await all(`SELECT o.* FROM orders o WHERE o.assigned_worker_id=? OR ${crewMemberSql} OR EXISTS(SELECT 1 FROM worker_profiles p JOIN members m ON m.id=p.member_id WHERE p.member_id=? AND ${eligibilityWhere}) ORDER BY o.created DESC LIMIT 1000`,u.id,u.id,u.id,at);}
  const id=url.searchParams.get('order');let selected:any;if(id){selected=await marketAccess(validId(id),u,true);if(!rows.some(r=>r.id===id))rows.unshift(await one('SELECT * FROM orders WHERE id=?',id));}
  const result:any={user:u,orders:rows.map(unpack).map(o=>projectOrder(o,u)),people:[],teams:[],rates:await rates(),notifications:await all('SELECT * FROM notices WHERE user_id=? ORDER BY created DESC LIMIT 80',u.id),lessons};
  if(u.role==='admin'){
