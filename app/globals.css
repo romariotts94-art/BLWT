@@ -63,3 +63,28 @@
 @media(prefers-reduced-motion:reduce){.trust-backdrop{transform:none;opacity:1;will-change:auto}.trust-backdrop::before{transform:none}.trust-logo-card:hover{transform:none}}
 .auth-modal{max-width:440px}.auth-modal form{display:grid;gap:14px;margin:20px 0 10px}.auth-modal .field input{margin-top:7px}.auth-message{margin:0;color:#56664d;font-size:13px}.auth-error{margin:0;color:#a23b31;font-size:13px}.auth-resend{margin:4px 0 12px}
 .brand .brand-to{font-weight:400;letter-spacing:.08em;margin:0 4px}
+
+.sidebar .brand{font-size:12px;gap:9px}.sidebar .brand small{font-size:5px;letter-spacing:1.5px}.sidebar .brand-symbol{width:30px;height:30px;border-radius:50%;border-width:2px}.workspace-label{font-size:9px;letter-spacing:.8px;line-height:1.45;max-width:190px}
+
+/* Account controls live beside notifications; the sidebar contains only work navigation. */
+.account-menu-wrap{position:relative;display:flex;align-items:center}
+.account-trigger{display:grid;place-items:center;padding:0;border:0;background:transparent;cursor:pointer}
+.account-trigger:focus-visible{outline:2px solid #81946b;outline-offset:3px;border-radius:50%}
+.account-avatar{position:relative;overflow:hidden}
+.account-avatar>img{position:absolute;z-index:2;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.account-avatar>span{position:relative;z-index:1}
+.account-menu{position:absolute;z-index:100;right:0;top:calc(100% + 10px);width:230px;padding:8px;border:1px solid #e2e6dc;border-radius:13px;background:#fff;box-shadow:0 16px 42px #1f271b20}
+.account-menu-user{display:flex;align-items:center;gap:10px;padding:9px 8px 12px;border-bottom:1px solid #edf0e9;margin-bottom:5px}
+.account-menu-user>span:last-child{min-width:0;display:grid;gap:3px}
+.account-menu-user b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-menu-user small{font-size:10px;color:#7c8179}
+.account-menu>button{width:100%;display:flex;align-items:center;gap:10px;padding:10px 9px;border:0;border-radius:8px;background:transparent;color:#35392f;text-align:left;font:inherit;font-size:12px;cursor:pointer}
+.account-menu>button:hover,.account-menu>button:focus-visible{background:#f2f4ed;outline:none}
+.brand-symbol{position:relative;overflow:hidden;background:linear-gradient(90deg,var(--ink) 50%,#fff 50%)}
+.brand-symbol::before,.brand-symbol::after{position:absolute;top:50%;transform:translateY(-50%);font-size:8px;line-height:1;font-weight:900;letter-spacing:-.4px}
+.brand-symbol::before{content:'B';left:4px;color:#fff}
+.brand-symbol::after{content:'W';right:3px;color:var(--ink)}
+.brand.light .brand-symbol{background:linear-gradient(90deg,#242921 50%,#fff 50%)}
+.workspace-label{font-size:10px;letter-spacing:.2px;line-height:1.4;text-transform:none;color:#a9b49c}
+.workspace-header .header-actions{gap:15px}
+.workspace-header .avatar.small{width:34px;height:34px}

@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { z } from 'zod';
-import { all, currentUser, guardOrigin, HttpError, json, fail, now, one, orderAccess, requireAdmin, run, uid, event } from '../../../lib/server';
+import { all, currentUser, guardOrigin, HttpError, json, fail, now, one, orderAccess, requireAdmin, run, uid, event, transaction } from '../../../lib/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,7 +30,25 @@ export async function POST(req: Request) {
     const orderId = String(form.get('order') || '');
     const file = form.get('file');
     const workerId=String(form.get('worker')||'');
-    if(workerId){if(u.role!=='admin'&&(u.id!==workerId||!['cleaner','leader'].includes(u.role)))throw new HttpError(403,'Нет доступа');if(!await one("SELECT id FROM members WHERE id=? AND role IN ('cleaner','leader')",workerId))throw new HttpError(404,'Сотрудник не найден');if(!(file instanceof File)||!['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>15*1024*1024)throw new HttpError(400,'Нужен PDF или изображение до 15 МБ');const bytes=new Uint8Array(await file.arrayBuffer());const signature=new TextDecoder().decode(bytes.slice(0,5));const valid=file.type==='application/pdf'?signature==='%PDF-':file.type==='image/jpeg'?bytes[0]===255&&bytes[1]===216:file.type==='image/png'?bytes.slice(0,8).join(',')==='137,80,78,71,13,10,26,10':signature.startsWith('RIFF')&&new TextDecoder().decode(bytes.slice(8,12))==='WEBP';if(!valid)throw new HttpError(400,'Содержимое файла не соответствует типу');if(!(env as any).BUCKET)throw new HttpError(503,'Хранилище недоступно');if(Number((await one('SELECT COUNT(*) AS n FROM documents WHERE worker_id=?',workerId)).n)>=50)throw new HttpError(400,'Лимит 50 документов');const id=uid();await (env as any).BUCKET.put(id,bytes);await run('INSERT INTO documents(id,worker_id,uploader_id,name,mime,size,storage_key,review_status,review_note,created) VALUES(?,?,?,?,?,?,?,?,?,?)',id,workerId,u.id,file.name.slice(0,200),file.type,file.size,id,'pending','',now());return json({ok:true,id});}
+    if(workerId){
+      if(u.role!=='admin'&&(u.id!==workerId||!['cleaner','leader'].includes(u.role)))throw new HttpError(403,'Нет доступа');
+      if(!await one("SELECT id FROM members WHERE id=? AND role IN ('cleaner','leader')",workerId))throw new HttpError(404,'Сотрудник не найден');
+      if(form.get('action')==='submit'){
+        const submitted=await transaction(async tx=>{
+          const result=await tx.run("UPDATE documents SET review_status='pending' WHERE worker_id=? AND uploader_id=? AND review_status='draft'",workerId,u.id);
+          if(!result.meta?.changes)throw new HttpError(400,'Сначала добавьте документы');
+          const admins=await tx.all("SELECT id FROM members WHERE role='admin' AND active=1");
+          for(const admin of admins)await tx.run('INSERT INTO notices(id,user_id,text,created) VALUES(?,?,?,?)',uid(),admin.id,'Исполнитель отправил документы на проверку',now());
+          await tx.run('INSERT INTO audit(id,order_id,actor,action,created) VALUES(?,?,?,?,?)',uid(),null,u.id,'Документы исполнителя отправлены на проверку',now());
+          return result.meta.changes;
+        });
+        return json({ok:true,count:submitted});
+      }
+      if(!(file instanceof File)||!['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>15*1024*1024)throw new HttpError(400,'Нужен PDF или изображение до 15 МБ');
+      const bytes=new Uint8Array(await file.arrayBuffer());const signature=new TextDecoder().decode(bytes.slice(0,5));const valid=file.type==='application/pdf'?signature==='%PDF-':file.type==='image/jpeg'?bytes[0]===255&&bytes[1]===216:file.type==='image/png'?bytes.slice(0,8).join(',')==='137,80,78,71,13,10,26,10':signature.startsWith('RIFF')&&new TextDecoder().decode(bytes.slice(8,12))==='WEBP';
+      if(!valid)throw new HttpError(400,'Содержимое файла не соответствует типу');if(!(env as any).BUCKET)throw new HttpError(503,'Хранилище недоступно');if(Number((await one('SELECT COUNT(*) AS n FROM documents WHERE worker_id=?',workerId)).n)>=50)throw new HttpError(400,'Лимит 50 документов');
+      const id=uid();await (env as any).BUCKET.put(id,bytes);await run('INSERT INTO documents(id,worker_id,uploader_id,name,mime,size,storage_key,review_status,review_note,created) VALUES(?,?,?,?,?,?,?,?,?,?)',id,workerId,u.id,file.name.slice(0,200),file.type,file.size,id,'draft','',now());return json({ok:true,id});
+    }
     if (!orderId || !z.string().uuid().safeParse(orderId).success) throw new HttpError(400, 'Не указан заказ');
     const o = await orderAccess(orderId, u);
     if (u.role !== 'admin' && !o.crew.includes(u.id)) throw new HttpError(403, 'Документы загружает назначенная команда');

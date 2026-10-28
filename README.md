@@ -24,8 +24,11 @@ npm ci
 npm run dev:pages   # публичная витрина
 npm run build:pages # сборка в pages-dist
 npm run dev        # полный серверный проект, локально
-npm run build      # серверная сборка Vinext / Cloudflare
+npm run build:node # серверная сборка для VPS: Node.js + PostgreSQL
+npm run start:node # запуск собранного Node.js-приложения
 ```
+
+Для локального просмотра полной серверной версии необходимы PostgreSQL и переменные окружения из `.env.example`. Проверяйте изменения на локальной базе; не направляйте сценарии интеграционных тестов на рабочую БД.
 
 При необходимости отдельной публикации откройте Settings → Pages → Build and deployment → GitHub Actions, затем вручную запустите workflow `.github/workflows/pages.yml`. Само обновление `main` публикацию не запускает.
 
