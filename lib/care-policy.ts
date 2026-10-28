@@ -17,9 +17,10 @@ export function publicCard(row:any,reviews:any[]=[]){return {
  id:row.member_id,name:row.display_name||row.name,bio:row.bio||'',city:row.city||'',
  experienceYears:row.experience_years||0,languages:row.languages||'',specialties:row.specialties||'',
  equipment:row.equipment||'',verified:!!row.verified,completed:Number(row.completed||0),
- avatar:row.avatar_key?'/api/cleaners/avatar?id='+encodeURIComponent(row.member_id):null,
+ avatar:row.avatar_key?'/api/cleaners/avatar?id='+encodeURIComponent(row.member_id):row.avatar_url||null,
  services:typeof row.services==='string'?JSON.parse(row.services):row.services||[],
  rating:reviews.length?Math.round(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length*10)/10:null,
  reviews:reviews.map(r=>({rating:r.rating,text:r.text,created:r.created})),
+ workPhotos:(row.workPhotos||[]).map((p:any)=>typeof p==='string'?{url:p}:({id:p.id,name:String(p.name||'').replace(/^Фото работы · /,''),created:p.created,url:p.url||'/api/cleaners/work-photo?id='+encodeURIComponent(p.id)})),
  fragranceFree:!!row.fragrance_free,petFriendly:!!row.pet_friendly,ownProducts:!!row.own_products
 };}

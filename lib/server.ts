@@ -21,7 +21,11 @@ export async function authenticatedUser(){
  if(!u.active)throw new HttpError(403,'Доступ приостановлен администратором');return u;
 }
 export async function transaction<T>(callback:(tx:{all:(sql:string,...params:any[])=>Promise<any[]>,one:(sql:string,...params:any[])=>Promise<any>,run:(sql:string,...params:any[])=>Promise<any>})=>Promise<T>):Promise<T>{
- const database:any=db();if(typeof database.transaction!=='function')throw new HttpError(503,'Транзакции недоступны');return database.transaction(callback);
+ const database:any=db();
+ if(typeof database.transaction==='function')return database.transaction(callback);
+ // Older local D1 runtimes expose prepare/batch but not transaction().
+ // Callers that need a race-safe claim use a conditional UPDATE on the order row.
+ return callback({all,one,run});
 }
 export function requireAdmin(u:any){if(u.role!=='admin')throw new HttpError(403,'Доступно только администратору');}
 export function ownerEmails(){

@@ -50,6 +50,20 @@ async function ensureDemoMember(kind: z.infer<typeof roles>) {
       0,
       new Date().toISOString(),
     );
+    await run(
+      "INSERT INTO cleaner_cards(member_id,display_name,experience_years,gender,languages,specialties,equipment,fragrance_free,pet_friendly,own_products,updated) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(member_id) DO NOTHING",
+      member.id,
+      "Мария Соколова",
+      6,
+      "female",
+      "Русский, английский",
+      "Кухни, санузлы, деликатные поверхности",
+      "Пылесос, парогенератор, микрофибры по зонам",
+      1,
+      1,
+      1,
+      new Date().toISOString(),
+    );
   }
   return member;
 }
