@@ -176,6 +176,11 @@
 .auth-change-role{margin:4px 0 12px}
 @media(max-width:600px){.public-header .bw-signin-button{min-width:78px;padding:10px 12px;font-size:13px;gap:6px}}
 
+/* Keep the mobile sign-in label visible even when the public header is compressed. */
+@media(max-width:600px){.public-header .header-actions .bw-signin-button{display:inline-flex!important;flex:0 0 auto;width:max-content;min-width:78px;max-width:none;white-space:nowrap;justify-content:center;line-height:1.2;font-size:13px!important;color:var(--ink)!important}.public-header .header-actions .bw-signin-button svg{display:none}}
+/* On narrow screens, frame the portrait subject rather than the wide room. */
+@media(max-width:600px){.bw-film video{object-position:82% center}}
+
 /* Recommended cleaning products: pick a surface, then swipe or use the carousel controls. */
 .bw-care-surface-picker{display:flex;gap:9px;overflow-x:auto;padding:5px 3px 12px;scrollbar-width:thin;scrollbar-color:#91a57b #edf1e3}
 .bw-care-surface-picker button{flex:0 0 auto;border:1px solid #d7e0cb;border-radius:999px;background:#fff;color:#33452e;padding:11px 17px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}

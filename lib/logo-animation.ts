@@ -5,6 +5,7 @@ export const LOGO_STAGES={enter:0,wipe:2000,park:5000,drop:5500,returnToInk:6100
 const clamp=(value:number)=>Math.max(0,Math.min(1,value));
 const progress=(t:number,start:number,end:number)=>clamp((t-start)/(end-start));
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
+const smoothstep=(t:number)=>t*t*(3-2*t);
 export type LogoPhase='idle'|'enter'|'wipe'|'park'|'drop'|'returnToInk'|'draw'|'walkToHeart'|'heart'|'pickup'|'exit';
 export type LogoFrame={phase:LogoPhase;clip:string;x:number;offset:number;y:number;opacity:number;propsOpacity:number;sheet:'actions'|'heart';sprite:number;mirror:boolean;travel:number};
 export type LogoGate={left:number;y:number};
@@ -49,10 +50,10 @@ export function logoSceneGeometry(frame:LogoFrame,inkWidth:number,catWidth:numbe
  const p=frame.travel;
  if(frame.phase==='enter'){
   if(p<.25){actorLeft=lerp(concealed,approach,p/.25);actorY=gate.y;mirror=true;occlusion=clamp((actorLeft+catWidth-gate.left)/catWidth)}
-  else{actorLeft=lerp(approach,circle,(p-.25)/.75);actorY=lerp(gate.y,0,(p-.25)/.75);mirror=circle<approach}
+  else{const walk=(p-.25)/.75;actorLeft=lerp(approach,circle,walk);actorY=lerp(gate.y,0,smoothstep(walk));mirror=circle<approach}
  }
  if(frame.phase==='exit'){
-  if(p<.75){actorLeft=lerp(heart,approach,p/.75);actorY=lerp(0,gate.y,p/.75);mirror=approach<heart}
+  if(p<.75){const walk=p/.75;actorLeft=lerp(heart,approach,walk);actorY=lerp(0,gate.y,smoothstep(walk));mirror=approach<heart}
   else{actorLeft=lerp(approach,concealed,(p-.75)/.25);actorY=gate.y;mirror=false;occlusion=clamp((actorLeft+catWidth-gate.left)/catWidth)}
  }
  return {actorLeft,actorY,mirror,actorClip:occlusion?`inset(0 ${occlusion*100}% 0 0)`:'none',occlusion,propsLeft:inkWidth+.55*catWidth,propsWidth:.75*catWidth,stageWidth:inkWidth+1.35*catWidth};
