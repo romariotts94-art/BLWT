@@ -59,6 +59,17 @@ services:
       db:
         condition: service_healthy
 
+  npd-scheduler:
+    image: black-and-white-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://blwt:${POSTGRES_PASSWORD}@db:5432/blwt
+    command: ["node", "scripts/npd-scheduler.mjs"]
+    depends_on:
+      db:
+        condition: service_healthy
+
   web:
     image: caddy:2-alpine
     restart: unless-stopped
