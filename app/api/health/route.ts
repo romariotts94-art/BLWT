@@ -8,7 +8,7 @@ const REQUIRED_TABLES = [
   'auth_codes','auth_sessions','documents','contracts','cities','customer_profiles','customer_cities',
   'worker_profiles','worker_availability','order_skips','worker_agreements','quality_attempts',
   'wallet_ledger','withdrawal_requests','order_incidents','cleaner_cards','staff_messages',
-  'support_tickets','support_messages','support_delivery',
+  'support_tickets','support_messages','support_delivery','npd_check_gate',
 ];
 
 export async function GET(){

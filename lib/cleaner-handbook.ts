@@ -1,4 +1,4 @@
-export const handbookVersion='23.10.2026 / 1.0';
+export const handbookVersion='29.10.2026 / 1.1';
 export const products=[
  {id:'neutral',name:'PROSEPT Multipower Neutral',use:'Нейтральное средство для ежедневного ухода за полом',dose:'2–5 мл на 1 л воды для ручной поддерживающей уборки (158-1).',caution:'Дерево не заливать. Совместимость с лаком, маслом и пропиткой подтвердить у изготовителя покрытия.',url:'https://prosept.ru/catalog/bytovaya_khimiya/multipower_neutral-_sredstvo_dlya_mytya_polov_vsekh_tipov/'},
  {id:'floor',name:'PROSEPT Multipower Floor',use:'Повседневные загрязнения керамических полов',dose:'1 штатный колпачок на 10 л воды. Объём колпачка не переводить в миллилитры.',caution:'Щелочное средство. При генеральной уборке — 2 колпачка на 10 л и смывание; не использовать этот режим для деликатного камня.',url:'https://prosept.ru/catalog/myte_polov_-multipower/multipower_floor-_universalnyy_kontsentrat_dlya_mytya_polov/'},
@@ -39,7 +39,11 @@ export const handbookChapters=[
  {title:'10. После заказа',items:['Очистить, высушить и хранить раздельно инвентарь; стирку микрофибры выполнять по инструкции производителя.','Проверить остатки средств, целостность упаковки и сроки годности; списать повреждённый инвентарь.','Обновить календарь и сообщить о найденных дефектах оборудования.','Хранить данные заказа только в сервисе. Не пересылать документы клиента и фотографии объекта в личные чаты.']}
 ];
 export const handbookSources=[
+ {name:'CDC — обычная уборка, дезинфекция и безопасность средств',url:'https://www.cdc.gov/hygiene/about/when-and-how-to-clean-and-disinfect-your-home.html'},
  {name:'OSHA — безопасность при работе с чистящими средствами',url:'https://www.osha.gov/sites/default/files/publications/OSHA3512.pdf'},
+ {name:'ISSA — обучение клинингового персонала и контроль качества',url:'https://www.issa.com/articles/how-to-train-cleaning-staff/'},
+ {name:'ISSA — микрофибра и предотвращение перекрёстного загрязнения',url:'https://www.issa.com/articles/maximize-your-microfiber/'},
+ {name:'Merry Maids — порядок профессиональной уборки сверху вниз',url:'https://merrymaids.com/blog/how-deep-clean-your-house'},
  {name:'American Cleaning Institute — безопасное применение',url:'https://www.cleaninginstitute.org/understanding-products/ingredients/cleaning-product-safety'},
  {name:'Natural Stone Institute — уход за натуральным камнем',url:'https://www.naturalstoneinstitute.org/consumers/care/'},
  {name:'Arizona Tile — уход за камнем',url:'https://www.arizonatile.com/resources/care-maintenance/care-maintenance-for-natural-stone/'},

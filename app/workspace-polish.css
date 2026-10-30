@@ -1,0 +1,34 @@
+/* A compact navigation drawer floats above the workspace at every width. */
+.workspace{padding-left:0!important;overflow-x:clip}
+.workspace .sidebar{width:min(288px,calc(100vw - 48px))!important}
+.sidebar{width:min(288px,calc(100vw - 48px));transform:translateX(calc(-100% - 18px));visibility:hidden;pointer-events:none;border-radius:0 18px 18px 0;box-shadow:0 16px 55px #10150f35;transition:transform .28s cubic-bezier(.2,.75,.25,1),visibility .28s,box-shadow .28s;will-change:transform;z-index:1002}
+.sidebar.open{transform:translateX(0);visibility:visible;pointer-events:auto;box-shadow:12px 0 42px #10150f36}
+.workspace-backdrop{position:fixed;inset:0;background:#151a13a8;backdrop-filter:blur(2px);z-index:1001;animation:workspace-backdrop-in .2s ease both;cursor:default}
+@keyframes workspace-backdrop-in{from{opacity:0}to{opacity:1}}
+.workspace-header{position:relative;z-index:20;gap:10px}
+.workspace-header>.mobile-toggle{display:inline-flex;flex:0 0 38px;width:38px;height:38px;border:1px solid #e5e8df;border-radius:11px;background:#fff;transition:background .18s,transform .18s}
+.workspace-header>.mobile-toggle:hover{background:#f0f3e9;transform:translateY(-1px)}
+.workspace-header .workspace-back-btn{width:38px;height:38px;flex:0 0 38px;border:1px solid #e5e8df;border-radius:11px;background:#fff;transition:background .18s,transform .18s,border-color .18s}
+.workspace-header .workspace-back-btn:not(:disabled):hover{background:#edf2df;border-color:#d7dfc7;transform:translateX(-2px)}
+.workspace-header .workspace-back-btn:disabled{opacity:.42;cursor:default}
+.workspace-main{width:min(100%,1660px);padding:clamp(22px,3vw,42px);}
+.sidebar .side-link{transition:background .18s,color .18s,transform .18s}
+.sidebar .side-link:hover{transform:translateX(2px)}
+@media(max-width:720px){
+ .workspace-header{padding:0 14px;gap:7px}
+ .workspace-header>span{font-size:10px;gap:5px;flex:1;min-width:0;overflow:hidden;white-space:nowrap}
+ .workspace-header .header-actions{gap:5px}
+ .workspace-header .workspace-back-btn,.workspace-header>.mobile-toggle{width:35px;height:35px;flex-basis:35px}
+ .workspace-main{padding:22px 16px}
+ .sidebar{width:min(272px,calc(100vw - 48px));padding:24px 16px}
+ .workspace .sidebar{width:min(272px,calc(100vw - 48px))!important}
+ .sidebar .side-link{min-height:46px}
+ .support-chat-layout{display:flex!important;flex-direction:column;height:max(340px,calc(100dvh - 315px));min-height:0!important;overflow:hidden}
+ .support-contact-list:not(.worker-contact-list){flex:0 0 auto;max-height:112px!important;overflow:auto}
+ .support-conversation{display:flex;flex:1 1 0;flex-direction:column;min-height:0!important;overflow:hidden}
+ .support-chat-feed{flex:1 1 0;min-height:0!important;max-height:none!important;overflow-y:auto}
+ .support-composer{flex:0 0 auto}
+ .workspace .bw-cat-toggle .bw-kitten-avatar{width:38px!important;height:50px!important}
+}
+@media(prefers-reduced-motion:reduce){.sidebar,.sidebar.open,.workspace-header>.mobile-toggle,.workspace-header .workspace-back-btn,.sidebar .side-link{transition:none}.workspace-backdrop{animation:none}}
+@media(max-width:360px){.workspace-header>span>.workspace-brand-label,.workspace-header>span>svg{display:none}}

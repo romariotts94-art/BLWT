@@ -48,13 +48,5 @@ export function fail(e:any){console.error('API',e?.message);const status=e.statu
 export function json(data:any){return Response.json(data,{headers:{'Cache-Control':'no-store'}});}
 
 export async function currentUser(){
- const actor=await authenticatedUser();
- if(actor.role!=='admin')return actor;
- const cookie=(await headers()).get('cookie')||'';
- const mode=cookie.split(';').map(x=>x.trim()).find(x=>x.startsWith('bw_view_mode='))?.split('=')[1];
- if(mode==='client'||mode==='worker'){
-  const target=await one('SELECT * FROM members WHERE email=?',mode==='client'?'developer-client@blackandwhite.local':'developer-worker@blackandwhite.local');
-  if(target&&target.active&&target.role===(mode==='client'?'client':'cleaner'))return {...target,canSwitchMode:true,viewMode:mode};
- }
- return {...actor,canSwitchMode:true,viewMode:'admin'};
+ return authenticatedUser();
 }

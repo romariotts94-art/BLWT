@@ -1,4 +1,5 @@
 'use client';
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useRef,useState,type KeyboardEvent} from 'react';
+export function sendOnEnter(e:KeyboardEvent<HTMLTextAreaElement>){if(e.key!=='Enter'||e.shiftKey||e.nativeEvent.isComposing||e.nativeEvent.keyCode===229)return;e.preventDefault();e.currentTarget.form?.requestSubmit();}
 export async function request(url:string,body?:unknown){const r=await fetch(url,{...(body!==undefined?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});const j:any=await r.json();if(!r.ok)throw Error(j.error||'Раздел временно недоступен');return j;}
 export function useModule(url:string|null,poll=false){const [data,setData]=useState<any>(null),[error,setError]=useState(''),[loading,setLoading]=useState(true);const seq=useRef(0);const refresh=useCallback(async()=>{if(!url){setLoading(false);return;}const n=++seq.current;try{const j:any=await request(url);if(n===seq.current){setData(j);setError('')}}catch(e:any){if(n===seq.current)setError(e.message)}finally{if(n===seq.current)setLoading(false)}},[url]);useEffect(()=>{setData(null);setLoading(true);refresh();const t=poll?setInterval(refresh,15000):undefined;return()=>{++seq.current;clearInterval(t)}},[refresh,poll]);return {data,error,loading,refresh};}
