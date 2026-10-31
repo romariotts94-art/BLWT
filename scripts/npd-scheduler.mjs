@@ -184,7 +184,6 @@ function scheduleNextRun() {
     await runDailyChecks();
     scheduleNextRun();
   }, delay);
-  timer.unref?.();
 }
 
 process.on('SIGTERM', () => { stopping = true; });
