@@ -1,13 +1,14 @@
 import { headers } from "next/headers";
 import { env } from "cloudflare:workers";
-import { json, fail } from "../../../../lib/server";
+import { guardOrigin, fail } from "../../../../lib/server";
 import { hashAuthValue, sessionCookie } from "../../../../lib/email-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
+    guardOrigin(req);
     const cookieHeader = (await headers()).get("cookie") || "";
     const raw = cookieHeader.split(";").map((part) => part.trim()).find((part) => part.startsWith("bw_session="))?.slice("bw_session=".length);
     const secret = (env as any).AUTH_SECRET;

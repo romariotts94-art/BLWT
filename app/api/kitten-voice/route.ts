@@ -1,6 +1,7 @@
+import {readJsonBody} from '../../../lib/request-body';
 import {z} from 'zod';
 import {env} from 'cloudflare:workers';
-import {guardOrigin} from '../../../lib/server';
+import {guardOrigin,fail} from '../../../lib/server';
 
 export const dynamic='force-dynamic';
 
@@ -19,13 +20,14 @@ export async function POST(req:Request){
  try{
   guardOrigin(req);
   if(!allowRequest(req))return Response.json({error:'Слишком много запросов. Попробуйте через минуту.'},{status:429,headers:{'Cache-Control':'no-store'}});
-  const {text}=schema.parse(await req.json());
+  const {text}=schema.parse(await readJsonBody(req));
   const runtimeEnv=env as unknown as Record<string,unknown>;
   const apiKey=String(runtimeEnv.QWEN_API_KEY||'').trim();
   if(!apiKey)return Response.json({error:'Озвучивание пока не настроено.'},{status:503,headers:{'Cache-Control':'no-store'}});
 
   const response=await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',{
    method:'POST',
+   signal:AbortSignal.timeout(20_000),
    headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},
    body:JSON.stringify({model:'qwen3-tts-flash',input:{text,voice:'Cherry',language_type:'Russian'}}),
   });
@@ -39,10 +41,11 @@ export async function POST(req:Request){
   const parsedAudioUrl=new URL(audioUrl);
   if(!['http:','https:'].includes(parsedAudioUrl.protocol)||!parsedAudioUrl.hostname.endsWith('.aliyuncs.com'))throw new Error('Unexpected Qwen audio URL');
   parsedAudioUrl.protocol='https:';
-  const audio=await fetch(parsedAudioUrl);
+  const audio=await fetch(parsedAudioUrl,{signal:AbortSignal.timeout(20_000),redirect:'error'});
   if(!audio.ok)throw new Error(`Qwen audio download failed: ${audio.status}`);
   return new Response(await audio.arrayBuffer(),{headers:{'Content-Type':audio.headers.get('content-type')||'audio/mpeg','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
  }catch(error:unknown){
+  if(error&&typeof error==='object'&&'status' in error)return fail(error);
   const details=error&&typeof error==='object'?error as {issues?:unknown}:{ };
   return Response.json({error:details.issues?'Проверьте текст для озвучивания.':'Не удалось подготовить озвучивание.'},{status:details.issues?400:500,headers:{'Cache-Control':'no-store'}});
  }

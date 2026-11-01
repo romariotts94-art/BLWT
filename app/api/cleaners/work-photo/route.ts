@@ -1,3 +1,4 @@
+import {readFormBody} from '../../../../lib/request-body';
 import {env} from 'cloudflare:workers';
 import {currentUser,fail,guardOrigin,HttpError,json,now,one,run,uid} from '../../../../lib/server';
 
@@ -22,7 +23,7 @@ export async function GET(req:Request){try{
 }catch(e){return fail(e)}}
 
 export async function POST(req:Request){try{
- guardOrigin(req);const u=await currentUser(),form=await req.formData(),workerId=String(form.get('worker')||u.id),file=form.get('file');
+ guardOrigin(req);const u=await currentUser(),form=await readFormBody(req),workerId=String(form.get('worker')||u.id),file=form.get('file');
  if(u.role!=='admin'&&(u.id!==workerId||!['cleaner','leader'].includes(u.role)))throw new HttpError(403,'Нет доступа');
  if(!await one("SELECT id FROM members WHERE id=? AND role IN ('cleaner','leader')",workerId))throw new HttpError(404,'Исполнитель не найден');
  if(!(file instanceof File))throw new HttpError(400,'Выберите фотографию');const bytes=new Uint8Array(await file.arrayBuffer());if(!validImage(file,bytes))throw new HttpError(400,'Содержимое файла не соответствует типу');

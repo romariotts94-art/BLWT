@@ -1,3 +1,4 @@
+import {readJsonBody} from '../../../../lib/request-body';
 import { env } from "cloudflare:workers";
 import nodemailer from "nodemailer";
 import { z } from "zod";
@@ -12,7 +13,7 @@ const inputSchema = z.object({ email: z.string().trim().email().max(254) });
 export async function POST(req: Request) {
   try {
     guardOrigin(req);
-    const { email } = inputSchema.parse(await req.json());
+    const { email } = inputSchema.parse(await readJsonBody(req));
     const normalizedEmail = email.toLowerCase();
     const secret = (env as any).AUTH_SECRET;
     if (!secret) throw new HttpError(503, "Вход по email ещё не настроен на сервере");
@@ -29,9 +30,10 @@ export async function POST(req: Request) {
     const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
     const expiresAt = now + 10 * 60_000;
     const codeHash = await hashAuthValue(`${secret}:${normalizedEmail}:${code}`);
-    await db.prepare(
-      "INSERT INTO auth_codes(email,code_hash,expires_at,attempts,requested_at) VALUES(?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash,expires_at=excluded.expires_at,attempts=0,requested_at=excluded.requested_at",
-    ).bind(normalizedEmail, codeHash, expiresAt, now).run();
+    const reserved = await db.prepare(
+      "INSERT INTO auth_codes(email,code_hash,expires_at,attempts,requested_at) VALUES(?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash,expires_at=excluded.expires_at,attempts=0,requested_at=excluded.requested_at WHERE auth_codes.requested_at<=?",
+    ).bind(normalizedEmail, codeHash, expiresAt, now, now - 60_000).run();
+    if (!reserved.meta.changes) throw new HttpError(429, "Подождите минуту перед повторным запросом кода");
 
     try {
       const smtpHost = (env as any).SMTP_HOST;
@@ -45,6 +47,9 @@ export async function POST(req: Request) {
         host: smtpHost,
         port: smtpPort,
         secure: smtpPort === 465,
+        connectionTimeout: 10_000,
+        greetingTimeout: 10_000,
+        socketTimeout: 20_000,
         ignoreTLS: smtpPort === 25 && !smtpUser,
         ...(smtpUser && smtpPassword ? { auth: { user: smtpUser, pass: smtpPassword } } : {}),
       });

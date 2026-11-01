@@ -1,7 +1,8 @@
+import {readJsonBody} from '../../../lib/request-body';
 import {z} from 'zod';
 import {env} from 'cloudflare:workers';
 import {cleaningCatalog,cleaningDetails,hasCleaningSelection} from '../../../lib/cleaning-catalog';
-import {extras,calculate,defaultRates,normalizeRates} from '../../../lib/domain';
+import {extras,calculate,defaultRates,normalizeRates,quoteSchema} from '../../../lib/domain';
 import {guardOrigin,rates as loadRates} from '../../../lib/server';
 import {cities} from '../../../lib/marketplace-policy';
 
@@ -66,7 +67,7 @@ function allowRequest(req:Request){
 
 function compactQuote(draft:DraftContext,rates:any,quote:QuoteContext){
  try{
-  return calculate({
+  return calculate(quoteSchema.parse({
    catalogService:draft.catalogService,
    service:draft.service||'standard',
    area:Number(draft.area)||60,
@@ -75,7 +76,7 @@ function compactQuote(draft:DraftContext,rates:any,quote:QuoteContext){
    urgent:Boolean(draft.urgent),
    extras:draft.extras||{},
    workers:0,
-  },rates);
+  }),rates);
  }catch{
   return {total:quote.total??null,base:quote.base??null,additions:quote.additions??null,hours:quote.hours??null,workers:quote.workers??null,needsEstimate:false};
  }
@@ -83,7 +84,7 @@ function compactQuote(draft:DraftContext,rates:any,quote:QuoteContext){
 
 function siteKnowledge(rates:any){
  const serviceCatalog=cleaningCatalog.map(item=>{
-  const pricing=rates.services[item.quoteService]||defaultRates.services[item.quoteService];
+  const pricing=rates.services[item.quoteService]||defaultRates.services[item.quoteService as keyof typeof defaultRates.services];
   const details=cleaningDetails(item.id);
   return {
    id:item.id,
@@ -119,7 +120,7 @@ function requestedTime(text:string){
  const q=text.toLocaleLowerCase('ru-RU').replace(/ё/g,'е');
  const clock=q.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
  let hour:number,minute=0,part='';
- if(clock){hour=Number(clock[1]);minute=Number(clock[2]);part=q.slice(clock.index,clock.index+clock[0].length+14).match(/утра|дня|вечера|ночи/)?.[0]||''}
+ if(clock){hour=Number(clock[1]);minute=Number(clock[2]);part=q.slice(clock.index??0,(clock.index??0)+clock[0].length+14).match(/утра|дня|вечера|ночи/)?.[0]||''}
  else{
   const words=Object.keys(hourWords).sort((a,b)=>b.length-a.length).join('|');
   const match=q.match(new RegExp(`(?:^|\\s)(?:(?:в|к|ко|на|с|около|примерно|после)\\s*)?(\\d{1,2}|${words})(?:\\s*(?:час(?:а|ов)?))?\\s*(утра|дня|вечера|ночи)?(?=\\s|$)`));
@@ -211,7 +212,7 @@ export async function POST(req:Request){
  try{
   guardOrigin(req);
   if(!allowRequest(req))return Response.json({error:'Слишком много запросов. Попробуйте через минуту.'},{status:429,headers:{'Cache-Control':'no-store'}});
-  const parsed=bodySchema.parse(await req.json());
+  const parsed=bodySchema.parse(await readJsonBody(req));
   const runtimeEnv=env as unknown as Record<string,unknown>;
   const apiKey=String(runtimeEnv.QWEN_API_KEY||'').trim();
   const workspaceId=String(runtimeEnv.QWEN_WORKSPACE_ID||'').trim();

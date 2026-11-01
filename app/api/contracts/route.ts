@@ -1,3 +1,4 @@
+import {readJsonBody} from '../../../lib/request-body';
 import { z } from 'zod';
 import { all, currentUser, event, fail, guardOrigin, HttpError, json, now, one, orderAccess, run, uid } from '../../../lib/server';
 export const dynamic = 'force-dynamic';
@@ -15,4 +16,4 @@ export async function GET(req: Request) {
  return json(u.role==='admin'?contract:{id:contract.id,order_id:contract.order_id,version:contract.version,body:contract.body,client_accepted_at:contract.client_accepted_at,created:contract.created});
  }catch(e){return fail(e)}
 }
-export async function POST(req:Request){try{guardOrigin(req);const u=await currentUser(),b=z.object({order:z.string().uuid(),role:z.literal('client')}).parse(await req.json()),o=await orderAccess(b.order,u);if(o.clientId!==u.id)throw new HttpError(403,'Подтверждает только заказчик');const t=now();await run('INSERT INTO contracts(id,order_id,version,body,created,updated) VALUES(?,?,?,?,?,?) ON CONFLICT(order_id) DO NOTHING',uid(),b.order,'1.0',bodyFor(o),t,t);await run('UPDATE contracts SET client_accepted_by=?,client_accepted_at=?,updated=? WHERE order_id=?',u.id,t,t,b.order);await event(b.order,u.id,'Заказчик согласовал договор');return json({ok:true,acceptedAt:t});}catch(e){return fail(e)}}
+export async function POST(req:Request){try{guardOrigin(req);const u=await currentUser(),b=z.object({order:z.string().uuid(),role:z.literal('client')}).parse(await readJsonBody(req)),o=await orderAccess(b.order,u);if(o.clientId!==u.id)throw new HttpError(403,'Подтверждает только заказчик');const t=now();await run('INSERT INTO contracts(id,order_id,version,body,created,updated) VALUES(?,?,?,?,?,?) ON CONFLICT(order_id) DO NOTHING',uid(),b.order,'1.0',bodyFor(o),t,t);await run('UPDATE contracts SET client_accepted_by=?,client_accepted_at=?,updated=? WHERE order_id=?',u.id,t,t,b.order);await event(b.order,u.id,'Заказчик согласовал договор');return json({ok:true,acceptedAt:t});}catch(e){return fail(e)}}

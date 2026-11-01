@@ -1,13 +1,14 @@
+import {readJsonBody} from '../../../lib/request-body';
 import {z} from 'zod';
 import {env} from 'cloudflare:workers';
 import {currentUser,all,one,transaction,guardOrigin,requireAdmin,fail,json,HttpError,uid,now} from '../../../lib/server';
 export const dynamic='force-dynamic';
 export async function GET(req:Request){try{
  const u=await currentUser(),id=new URL(req.url).searchParams.get('ticket');
- if(id){const t=await one('SELECT * FROM support_tickets WHERE id=?',id);if(!t||u.role!=='admin'&&t.user_id!==u.id)throw new HttpError(403,'Обращение недоступно');return json({ticket:t,messages:await all("SELECT s.id,s.sender_id,s.text,s.created,CASE WHEN m.role='admin' THEN 'Поддержка' ELSE m.name END AS name FROM support_messages s JOIN members m ON m.id=s.sender_id WHERE ticket_id=? ORDER BY created LIMIT 500",id)});}
- return json({tickets:await all(`SELECT t.*,m.name FROM support_tickets t JOIN members m ON m.id=t.user_id ${u.role==='admin'?'':'WHERE user_id=?'} ORDER BY updated DESC LIMIT 100`,...(u.role==='admin'?[]:[u.id])),telegram:u.role==='admin'?{configured:!!((env as any).TELEGRAM_BOT_TOKEN&&(env as any).TELEGRAM_ADMIN_CHAT_IDS),pending:(await one('SELECT COUNT(*) AS n FROM support_delivery WHERE delivered_at IS NULL')).n}:undefined});
+ if(id){const t=await one('SELECT * FROM support_tickets WHERE id=?',id);if(!t||u.role!=='admin'&&t.user_id!==u.id)throw new HttpError(403,'Обращение недоступно');return json({ticket:t,messages:(await all("SELECT s.id,s.sender_id,s.text,s.created,CASE WHEN m.role='admin' THEN 'Поддержка' ELSE m.name END AS name FROM support_messages s JOIN members m ON m.id=s.sender_id WHERE ticket_id=? ORDER BY s.created DESC,s.id DESC LIMIT 500",id)).reverse()});}
+ return json({tickets:await all(`SELECT t.*,m.name,m.role AS user_role FROM support_tickets t JOIN members m ON m.id=t.user_id ${u.role==='admin'?'':'WHERE user_id=?'} ORDER BY updated DESC LIMIT 100`,...(u.role==='admin'?[]:[u.id])),telegram:u.role==='admin'?{configured:!!((env as any).TELEGRAM_BOT_TOKEN&&(env as any).TELEGRAM_ADMIN_CHAT_IDS),pending:(await one('SELECT COUNT(*) AS n FROM support_delivery WHERE delivered_at IS NULL')).n}:undefined});
  }catch(e){return fail(e)}}
-export async function POST(req:Request){try{guardOrigin(req);const u=await currentUser(),b=z.object({ticketId:z.string().uuid().optional(),subject:z.string().trim().min(3).max(120).optional(),text:z.string().trim().min(1).max(3000).optional(),close:z.boolean().optional()}).parse(await req.json());
+export async function POST(req:Request){try{guardOrigin(req);const u=await currentUser(),b=z.object({ticketId:z.string().uuid().optional(),subject:z.string().trim().min(3).max(120).optional(),text:z.string().trim().min(1).max(3000).optional(),close:z.boolean().optional()}).parse(await readJsonBody(req));
  return json(await transaction(async tx=>{
  await tx.one('SELECT id FROM members WHERE id=? FOR UPDATE',u.id);
  let id=b.ticketId;if(id){const t=await tx.one('SELECT * FROM support_tickets WHERE id=? FOR UPDATE',id);if(!t||u.role!=='admin'&&t.user_id!==u.id)throw new HttpError(403,'Обращение недоступно');if(b.close!==undefined){requireAdmin(u);await tx.run('UPDATE support_tickets SET status=?,updated=? WHERE id=?',b.close?'closed':'open',now(),id);return {id};}if(t.status==='closed')throw new HttpError(409,'Обращение закрыто. Создайте новое.');}

@@ -104,12 +104,16 @@ async function checkWorker(client, worker, requestDate) {
 
   await client.query('BEGIN');
   try {
-    await client.query(
+    const saved = await client.query(
       `UPDATE worker_profiles
        SET npd_status = $1, npd_checked_at = $2, npd_checked_on = $3, npd_message = $4, updated = $2
-       WHERE member_id = $5`,
-      [dbStatus, checkedAt, requestDate, message, worker.member_id],
+       WHERE member_id = $5 AND npd_inn = $6 AND npd_consent_at = $7`,
+      [dbStatus, checkedAt, requestDate, message, worker.member_id, worker.npd_inn, worker.npd_consent_at],
     );
+    if (!saved.rowCount) {
+      await client.query('COMMIT');
+      return false;
+    }
 
     const previousStatus = worker.npd_status === null ? null : Number(worker.npd_status);
     if (previousStatus !== dbStatus) {
@@ -142,7 +146,7 @@ async function runDailyChecks() {
 
     const requestDate = moscowDate();
     const due = await client.query(
-      `SELECT p.member_id, p.npd_inn, p.npd_status
+      `SELECT p.member_id, p.npd_inn, p.npd_status, p.npd_consent_at
        FROM worker_profiles p
        JOIN members m ON m.id = p.member_id
        WHERE p.npd_inn IS NOT NULL

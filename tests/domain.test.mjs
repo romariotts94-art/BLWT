@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {calculate,defaultRates,quoteSchema,publicQuote,overlaps,transitions} from '../lib/domain.ts';
+import {calculate,defaultRates,quoteSchema,bookingSchema,publicQuote,overlaps,transitions,isWithinUrgentWindow} from '../lib/domain.ts';
 const input={service:'standard',area:60,dirt:0,frequency:0,urgent:false,extras:{},workers:0};
 test('Москва: базовая уборка 60 м² = 5400 ₽',()=>{const q=calculate(input);assert.equal(q.total,5400);assert.equal(q.workers,1);assert.equal(q.personHours,2.5);assert.equal(q.hours,2.5)});
 test('Минимальная стоимость защищает малые объекты',()=>assert.equal(calculate({...input,area:15}).total,3900));
@@ -8,6 +8,8 @@ test('Коэффициенты применяются к базе, опции д
 test('Количество клинеров не умножает цену',()=>{const a=calculate({...input,area:180}),b=calculate({...input,area:180,workers:4});assert.equal(a.total,b.total);assert.ok(b.hours<a.hours)});
 test('Спецобъект: смета, а не нулевая оплаченная уборка',()=>{const q=calculate({...input,service:'custom'});assert.equal(q.total,0);assert.equal(q.needsEstimate,true)});
 test('Отрицательные опции, неизвестные ключи, NaN и превышение площади отклоняются',()=>{for(const v of [{extras:{oven:-1}},{extras:{injected:1}},{area:NaN},{area:10001},{frequency:3},{workers:13}])assert.equal(quoteSchema.safeParse({...input,...v}).success,false)});
+test('Контактные данные заявки сверяются с серверной схемой до подтверждения',()=>{const contact=bookingSchema.pick({name:true,phone:true,address:true});assert.equal(contact.safeParse({name:'',phone:'',address:''}).success,false);assert.equal(contact.safeParse({name:'Анна Тестовая',phone:'+7 999 123-45-67',address:'улица Тестовая, дом 12'}).success,true);assert.equal(contact.safeParse({name:'Анна',phone:'abc +7 999 123-45-67',address:'улица Тестовая, дом 12'}).success,false);assert.equal(contact.safeParse({name:'А'.repeat(101),phone:'+7 999 123-45-67',address:'улица Тестовая, дом 12'}).success,false)});
+test('Автосрочность действует только для будущего времени в ближайшие 24 часа',()=>{const now=Date.parse('2026-11-01T00:00:00Z');assert.equal(isWithinUrgentWindow('2026-11-01','10:00','+03:00',now),true);assert.equal(isWithinUrgentWindow('2026-10-31','23:00','+03:00',now),false);assert.equal(isWithinUrgentWindow('2026-11-02','03:00','+03:00',now),false);assert.equal(isWithinUrgentWindow('bad','10:00','+03:00',now),false)});
 test('Внешний ответ не раскрывает маржу и выплаты',()=>{const q=publicQuote(calculate(input));assert.equal(q.total,5400);assert.equal('payroll' in q,false);assert.equal('margin' in q,false);assert.equal('contribution' in q,false)});
 test('Проверка пересечения включает час на дорогу',()=>{const a={date:'2026-10-22',time:'10:00',quote:{hours:3}},b={date:'2026-10-22',time:'13:30',quote:{hours:2}},c={...b,time:'14:00'};assert.equal(overlaps(a,b),true);assert.equal(overlaps(a,c),false)});
 test('Нельзя завершить новую заявку, закрытые статусы финальны',()=>{assert.equal(transitions.requested.includes('completed'),false);assert.deepEqual(transitions.completed,[]);assert.deepEqual(transitions.cancelled,[]);assert.ok(transitions.review.includes('in_progress'))});

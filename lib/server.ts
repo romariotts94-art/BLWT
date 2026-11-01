@@ -7,9 +7,12 @@ import { projectOrder } from './marketplace-policy';
 export class HttpError extends Error {constructor(public status:number,message:string){super(message)}}
 export const db=()=>{if(!env.DB)throw new HttpError(503,'База данных недоступна');return env.DB;};
 export const uid=()=>crypto.randomUUID();export const now=()=>new Date().toISOString();
-export async function all(sql:string,...params:any[]){return (await db().prepare(sql).bind(...params).all()).results as any[];}
-export async function one(sql:string,...params:any[]){return db().prepare(sql).bind(...params).first<any>();}
-export async function run(sql:string,...params:any[]){return db().prepare(sql).bind(...params).run();}
+// SQLite serializes writes and has no SELECT FOR UPDATE syntax. Mutations also
+// use revisions/conditional UPDATEs; PostgreSQL additionally locks selected rows.
+const portableSql=(sql:string)=>typeof (db() as any).transaction==='function'?sql:sql.replace(/\s+FOR UPDATE(?:\s+SKIP LOCKED)?\s*$/i,'');
+export async function all(sql:string,...params:any[]){return (await db().prepare(portableSql(sql)).bind(...params).all()).results as any[];}
+export async function one(sql:string,...params:any[]){return db().prepare(portableSql(sql)).bind(...params).first<any>();}
+export async function run(sql:string,...params:any[]){return db().prepare(portableSql(sql)).bind(...params).run();}
 export async function authenticatedUser(){
  const a=await getChatGPTUser();
  if(!a){const sessionUser=await getEmailSessionUser();if(!sessionUser)throw new HttpError(401,'Войдите, чтобы продолжить');return sessionUser;}

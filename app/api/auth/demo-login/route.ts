@@ -1,3 +1,4 @@
+import {readFormBody} from '../../../../lib/request-body';
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { fail, guardOrigin, HttpError } from "../../../../lib/server";
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
     if (!demoLoginEnabled()) throw new HttpError(404, "Страница не найдена");
     const key = attemptKey(request);
     checkAttemptLimit(key);
-    const form = await request.formData();
+    const form = await readFormBody(request);
     const input = z.object({ login: z.string().trim().min(1).max(120), password: z.string().min(1).max(200) }).parse({
       login: form.get("login"), password: form.get("password"),
     });

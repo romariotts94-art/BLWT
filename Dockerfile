@@ -8,6 +8,9 @@ COPY . .
 RUN npm run build:node
 
 FROM node:22-bookworm-slim AS runtime
+ARG RELEASE_SHA
+ENV RELEASE_SHA=$RELEASE_SHA
+LABEL org.opencontainers.image.revision=$RELEASE_SHA
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 FILE_STORAGE_PATH=/app/data/uploads
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules

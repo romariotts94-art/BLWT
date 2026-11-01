@@ -1,7 +1,7 @@
 'use client';
 import React, {useEffect, useRef, useState} from 'react';
 import {ArrowUpRight, ArrowRight, Check, Plus, Minus, House, Sparkles, PaintRoller, Building2, SlidersHorizontal, Video, ShieldCheck, MessageCircle, Camera, Pause, Play, LockKeyhole, CalendarDays, ClipboardCheck, Leaf, Wind, Droplets, Star, Search, ChevronDown, CheckCircle2, Users, Sofa, Utensils, PanelTop, Shirt, CircleHelp} from 'lucide-react';
-import {services, extras, extraGroups, money, calculate} from '../lib/domain';
+import {services, extras, extraGroups, money, calculate, isWithinUrgentWindow} from '../lib/domain';
 
 import BookingDate from './BookingDate';
 import EquipmentShowcase from './EquipmentShowcase';
@@ -64,7 +64,7 @@ export default function MarketingHome({draft,setDraft,rates,quote,onBook,onConti
  const activePhotos=photosForService(active);
  const catalogService=hasCleaningSelection(draft)?selectedCleaning(draft).id:undefined;
  const activeDraft=chooseCleaning(draft,active);
- const activeQuote=calculate({...activeDraft,urgent:activeDraft.urgent||new Date(`${draft.date}T${draft.time}:00${cityById(draft.cityId)?.offset||'+03:00'}`).getTime()-Date.now()<86400000},rates);
+ const activeQuote=calculate({...activeDraft,urgent:activeDraft.urgent||isWithinUrgentWindow(draft.date,draft.time,cityById(draft.cityId)?.offset||'+03:00')},rates);
  const catalogSelectionRef=useRef(catalogService);
  useEffect(()=>{if(catalogService&&catalogService!==catalogSelectionRef.current)setSelected(catalogService);catalogSelectionRef.current=catalogService},[catalogService]);
  const [cleaningRun,setCleaningRun]=useState(0);

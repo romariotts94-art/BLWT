@@ -1,3 +1,4 @@
+import {env} from 'cloudflare:workers';
 import {one} from '../../../lib/server';
 export const dynamic='force-dynamic';
 
@@ -8,13 +9,13 @@ const REQUIRED_TABLES = [
   'auth_codes','auth_sessions','documents','contracts','cities','customer_profiles','customer_cities',
   'worker_profiles','worker_availability','order_skips','worker_agreements','quality_attempts',
   'wallet_ledger','withdrawal_requests','order_incidents','cleaner_cards','staff_messages',
-  'support_tickets','support_messages','support_delivery','npd_check_gate',
+  'support_tickets','support_messages','support_delivery','npd_check_gate','admin_profiles','order_direct_messages','management_messages',
 ];
 
 export async function GET(){
   try{
     await one(`SELECT 1 FROM ${REQUIRED_TABLES.join(',')} LIMIT 0`);
-    return Response.json({ok:true,version:'marketplace-2026-10-21'},{headers:{'Cache-Control':'no-store'}});
+    return Response.json({ok:true,version:'marketplace-2026-10-21',release:(env as any).RELEASE_SHA||null},{headers:{'Cache-Control':'no-store'}});
   }catch{
     return Response.json({ok:false},{status:503,headers:{'Cache-Control':'no-store'}});
   }

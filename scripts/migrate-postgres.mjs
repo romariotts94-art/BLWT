@@ -103,7 +103,8 @@ try {
     "auth_codes", "auth_sessions", "documents", "contracts", "cities", "customer_profiles",
     "customer_cities", "worker_profiles", "worker_availability", "order_skips", "worker_agreements",
     "quality_attempts", "wallet_ledger", "withdrawal_requests", "order_incidents", "cleaner_cards",
-    "staff_messages", "support_tickets", "support_messages", "support_delivery",
+    "staff_messages", "support_tickets", "support_messages", "support_delivery", "npd_check_gate",
+    "admin_profiles", "order_direct_messages", "management_messages",
   ];
   const missing = [];
   for (const table of required) if (!(await tableExists(table))) missing.push(table);

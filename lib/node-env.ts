@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, stat, writeFile, readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { Pool, type PoolClient } from "pg";
@@ -127,18 +127,28 @@ function filePath(key: string) {
 }
 
 const BUCKET = {
-  async put(key: string, data: ArrayBuffer | ArrayBufferView, _options?: unknown) {
+  async delete(key: string) {
+    for (const file of [filePath(key), filePath(key) + '.meta.json']) {
+      try { await unlink(file); }
+      catch (error: any) { if (error?.code !== "ENOENT") throw error; }
+    }
+  },
+  async put(key: string, data: ArrayBuffer | ArrayBufferView, options?: { httpMetadata?: { contentType?: string } }) {
     await mkdir(uploadRoot, { recursive: true, mode: 0o750 });
     const bytes = ArrayBuffer.isView(data)
       ? Buffer.from(data.buffer, data.byteOffset, data.byteLength)
       : Buffer.from(data);
     await writeFile(filePath(key), bytes, { mode: 0o640 });
+    await writeFile(filePath(key) + '.meta.json', JSON.stringify(options?.httpMetadata || {}), { mode: 0o640 });
   },
   async get(key: string) {
     const file = filePath(key);
     try {
       await stat(file);
-      return { body: Readable.toWeb(createReadStream(file)) as ReadableStream };
+      let httpMetadata = {};
+      try { httpMetadata = JSON.parse(await readFile(file + '.meta.json', 'utf8')); }
+      catch (error: any) { if (error?.code !== 'ENOENT') throw error; }
+      return { body: Readable.toWeb(createReadStream(file)) as ReadableStream, httpMetadata };
     } catch (error: any) {
       if (error?.code === "ENOENT") return null;
       throw error;
@@ -149,6 +159,16 @@ const BUCKET = {
 export const env = {
   DB,
   BUCKET,
+  RELEASE_SHA: process.env.RELEASE_SHA || "",
+  TRUST_CHATGPT_AUTH_HEADERS: false,
+  OWNER_EMAILS: process.env.OWNER_EMAILS || "",
+  DEMO_LOGIN_ENABLED: process.env.DEMO_LOGIN_ENABLED || "false",
+  DEMO_CLIENT_LOGIN: process.env.DEMO_CLIENT_LOGIN || "",
+  DEMO_CLIENT_PASSWORD_HASH: process.env.DEMO_CLIENT_PASSWORD_HASH || "",
+  DEMO_WORKER_LOGIN: process.env.DEMO_WORKER_LOGIN || "",
+  DEMO_WORKER_PASSWORD_HASH: process.env.DEMO_WORKER_PASSWORD_HASH || "",
+  DEMO_ADMIN_LOGIN: process.env.DEMO_ADMIN_LOGIN || "",
+  DEMO_ADMIN_PASSWORD_HASH: process.env.DEMO_ADMIN_PASSWORD_HASH || "",
   ADMIN_EMAILS: process.env.ADMIN_EMAILS || "",
   AUTH_SECRET: process.env.AUTH_SECRET || "",
   DEVELOPER_ACCESS_SECRET: process.env.DEVELOPER_ACCESS_SECRET || "",

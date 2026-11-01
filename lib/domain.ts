@@ -164,7 +164,7 @@ export function publicReviews(records:any[]){return records.filter(o=>o.status==
 export const statuses:Record<string,string>={requested:'Новая заявка',offered:'Подбор сотрудников',needs_reschedule:'Нужно выбрать новую дату',contract_pending:'Подтверждение договора',admin_review:'Проверка назначения',assigned:'Подтверждён',en_route:'Команда в пути',in_progress:'Уборка идёт',review:'Приёмка',completed:'Завершён',cancelled:'Отменён'};
 export const steps=['requested','offered','assigned','en_route','in_progress','review','completed'];
 export const transitions:Record<string,string[]>={requested:['offered','cancelled'],offered:['offered','contract_pending','cancelled','needs_reschedule'],needs_reschedule:['offered','cancelled'],contract_pending:['cancelled'],admin_review:['cancelled'],assigned:['en_route','cancelled'],en_route:['in_progress','cancelled'],in_progress:['review'],review:['completed','in_progress'],completed:[],cancelled:[]};
-export const quoteSchema=z.object({catalogService:z.string().refine(id=>cleaningCatalog.some(s=>s.id===id),'Неизвестный вид уборки').optional(),service:z.enum(['standard','deep','renovation','office','custom']),area:z.number().min(15).max(10000),dirt:z.number().int().min(0).max(2),frequency:z.number().int().min(0).max(2),urgent:z.boolean(),extras:z.record(z.number().int().min(0).max(30)).refine(v=>Object.keys(v).every(k=>k in extras),'Неизвестная дополнительная услуга'),workers:z.number().int().min(0).max(12)});
+export const quoteSchema=z.object({catalogService:z.string().refine(id=>cleaningCatalog.some(s=>s.id===id),'Неизвестный вид уборки').optional(),service:z.enum(['standard','deep','renovation','office','custom']),area:z.number().min(15).max(10000),dirt:z.number().int().min(0).max(2),frequency:z.number().int().min(0).max(2),urgent:z.boolean(),extras:z.record(z.string(),z.number().int().min(0).max(30)).refine(v=>Object.keys(v).every(k=>k in extras),'Неизвестная дополнительная услуга'),workers:z.number().int().min(0).max(12)});
 export type QuoteInput=z.infer<typeof quoteSchema>;
 export function calculate(input:QuoteInput,rates:any=defaultRates){
  rates=normalizeRates(rates);
@@ -178,6 +178,10 @@ export function calculate(input:QuoteInput,rates:any=defaultRates){
  const supplies=Math.round(total*rates.suppliesPercent/100),overhead=Math.round(total*rates.overheadPercent/100),taxReserve=Math.round(total*rates.taxReservePercent/100);
  const cost=payroll+transport+video+supplies+overhead+taxReserve;
  return {base,multiplier,additions,total,personHours,workers,hours,payroll,transport,video,supplies,overhead,taxReserve,cost,contribution:total-cost,margin:total?Math.round((total-cost)/total*100):0,needsEstimate:p.service==='custom',version:rates.version};
+}
+export function isWithinUrgentWindow(date:string,time:string,offset='+03:00',now=Date.now()){
+ const target=Date.parse(`${date}T${time}:00${offset}`),remaining=target-now;
+ return Number.isFinite(target)&&remaining>=0&&remaining<86400000;
 }
 export const bookingSchema=quoteSchema.extend({preferences:preferencesSchema,name:z.string().trim().min(2).max(100),phone:z.string().regex(/^\+?[\d\s()\-]{10,22}$/,'Укажите корректный телефон'),address:z.string().trim().min(8).max(400),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>Number.isFinite(Date.parse(v+'T12:00:00Z'))&&new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v,'Укажите существующую дату'),time:z.string().regex(/^(0[8-9]|1\d|20):[03]0$/),notes:z.string().max(2000),liveConsent:z.boolean(),terms:z.literal(true)});
 export const checklist=['Полы и плинтусы','Пыль и поверхности','Кухня и рабочие зоны','Санузлы и сантехника','Зеркала и стекло','Мусор и финальная проверка'];

@@ -1,8 +1,9 @@
+import {readFormBody} from '../../../lib/request-body';
 import {env} from 'cloudflare:workers';
 import {currentUser,orderAccess,one,run,uid,now,guardOrigin,HttpError,json,fail,event,transaction} from '../../../lib/server';
 export const dynamic='force-dynamic';
 export async function POST(req:Request){try{
- guardOrigin(req);if(Number(req.headers.get('content-length')||0)>9*1024*1024)throw new HttpError(413,'Файл слишком большой');const u=await currentUser(),f=await req.formData(),id=String(f.get('order')),o=await orderAccess(id,u),purpose=f.get('purpose')==='brief'?'brief':f.get('purpose')==='products'?'products':'report';
+ guardOrigin(req);if(Number(req.headers.get('content-length')||0)>9*1024*1024)throw new HttpError(413,'Файл слишком большой');const u=await currentUser(),f=await readFormBody(req),id=String(f.get('order')),o=await orderAccess(id,u),purpose=f.get('purpose')==='brief'?'brief':f.get('purpose')==='products'?'products':'report';
  if(purpose==='brief'){if(u.role!=='admin'&&o.clientId!==u.id)throw new HttpError(403,'Фотографии объекта добавляет заказчик');if(['cancelled','completed'].includes(o.status))throw new HttpError(400,'Заказ закрыт');}
  else {if(u.role!=='admin'&&!o.crew.includes(u.id))throw new HttpError(403,'Фотоотчёт добавляет команда');if(!['in_progress','review'].includes(o.status))throw new HttpError(400,'Фотоотчёт доступен во время уборки и приёмки');}
  const file=f.get('file');if(!(file instanceof File)||!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>8*1024*1024)throw new HttpError(400,'Нужно фото JPEG, PNG или WebP до 8 МБ');

@@ -1,11 +1,9 @@
+import {readJsonBody} from '../../../lib/request-body';
 import {z} from 'zod';
 import {all,one,run,currentUser,requireAdmin,guardOrigin,json,fail,HttpError,now,uid,transaction} from '../../../lib/server';
 import {cardSchema,publicCard} from '../../../lib/care-policy';
+import {cleanerAccess} from '../../../lib/cleaner-access';
 export const dynamic='force-dynamic';
-export async function cleanerAccess(u:any,id:string){
- if(u.role==='admin'||u.id===id&&['cleaner','leader'].includes(u.role))return;
- if(!await one("SELECT id FROM orders WHERE client_id=? AND assigned_worker_id=? AND status NOT IN ('cancelled','requested','offered') LIMIT 1",u.id,id))throw new HttpError(403,'Профиль доступен по вашему заказу');
-}
 export async function GET(req:Request){try{
  const u=await currentUser(),url=new URL(req.url);let id=url.searchParams.get('id');
  if(url.searchParams.get('order')){const o=await one('SELECT client_id,assigned_worker_id FROM orders WHERE id=?',url.searchParams.get('order'));if(!o||u.role!=='admin'&&o.client_id!==u.id)throw new HttpError(403,'Нет доступа');id=o.assigned_worker_id;if(!id)return json({card:null});}
@@ -24,14 +22,14 @@ export async function GET(req:Request){try{
  return json({card,editable:u.role==='admin'||u.id===id,profile:u.role==='admin'||u.id===id?row:undefined});
  }catch(e){return fail(e)}}
 export async function POST(req:Request){try{
- guardOrigin(req);const u=await currentUser(),b:any=await req.json(),id=b.workerId||u.id;
+ guardOrigin(req);const u=await currentUser(),b=z.record(z.string(),z.unknown()).parse(await readJsonBody(req)),id=z.string().min(1).max(200).parse(b.workerId??u.id);
  if(u.role!=='admin'&&(u.id!==id||!['cleaner','leader'].includes(u.role)))throw new HttpError(403,'Нет доступа');
  if(!await one("SELECT id FROM members WHERE id=? AND role IN ('cleaner','leader')",id))throw new HttpError(404,'Исполнитель не найден');
  const c=cardSchema.parse(b.profile);
  const workerProfile=b.workerProfile===undefined?null:z.object({cityId:z.string().uuid(),bio:z.string().trim().min(30,'Расскажите о себе минимум в 30 символах').max(1200)}).parse(b.workerProfile);
  if(workerProfile&&!await one('SELECT id FROM cities WHERE id=?',workerProfile.cityId))throw new HttpError(400,'Выберите город из списка');
  await transaction(async tx=>{
-  await tx.run(`INSERT INTO cleaner_cards(member_id,display_name,experience_years,gender,languages,specialties,equipment,fragrance_free,pet_friendly,own_products,updated) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(member_id) DO UPDATE SET display_name=excluded.display_name,experience_years=excluded.experience_years,gender=excluded.gender,languages=excluded.languages,specialties=excluded.specialties,equipment=excluded.equipment,fragrance_free=excluded.fragrance_free,pet_friendly=excluded.pet_friendly,own_products=excluded.own_products,updated=excluded.updated`,id,c.displayName,c.experienceYears,c.gender,c.languages,c.specialties,c.equipment,c.fragranceFree,c.petFriendly,c.ownProducts,now());
+  await tx.run(`INSERT INTO cleaner_cards(member_id,display_name,experience_years,gender,languages,specialties,equipment,fragrance_free,pet_friendly,own_products,updated) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(member_id) DO UPDATE SET display_name=excluded.display_name,experience_years=excluded.experience_years,gender=excluded.gender,languages=excluded.languages,specialties=excluded.specialties,equipment=excluded.equipment,fragrance_free=excluded.fragrance_free,pet_friendly=excluded.pet_friendly,own_products=excluded.own_products,updated=excluded.updated`,id,c.displayName,c.experienceYears,c.gender,c.languages,c.specialties,c.equipment,Number(c.fragranceFree),Number(c.petFriendly),Number(c.ownProducts),now());
   if(workerProfile){
    await tx.run('INSERT INTO worker_profiles(member_id,updated) VALUES(?,?) ON CONFLICT(member_id) DO NOTHING',id,now());
    const old=await tx.one('SELECT city_id FROM worker_profiles WHERE member_id=?',id);

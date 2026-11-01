@@ -1,3 +1,4 @@
+import {readJsonBody,readFormBody} from '../../../lib/request-body';
 import { env } from 'cloudflare:workers';
 import { z } from 'zod';
 import { all, currentUser, guardOrigin, HttpError, json, fail, now, one, orderAccess, requireAdmin, run, uid, event, transaction } from '../../../lib/server';
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     guardOrigin(req);
     if (Number(req.headers.get('content-length') || 0) > 16 * 1024 * 1024) throw new HttpError(413, 'Документ должен быть не больше 15 МБ');
     const u = await currentUser();
-    const form = await req.formData();
+    const form = await readFormBody(req);
     const orderId = String(form.get('order') || '');
     const file = form.get('file');
     const workerId=String(form.get('worker')||'');
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     guardOrigin(req); const u = await currentUser(); requireAdmin(u);
-    const body = z.object({ id: z.string().uuid(), status: z.enum(['approved', 'rejected']), note: z.string().max(500).default('') }).parse(await req.json());
+    const body = z.object({ id: z.string().uuid(), status: z.enum(['approved', 'rejected']), note: z.string().max(500).default('') }).parse(await readJsonBody(req));
     const doc = await one('SELECT * FROM documents WHERE id=?', body.id); if (!doc) throw new HttpError(404, 'Документ не найден');
     await run('UPDATE documents SET review_status=?,review_note=?,reviewed_at=? WHERE id=?', body.status, body.note, now(), body.id);
     await event(doc.order_id || null, u.id, body.status === 'approved' ? 'Документ проверен' : 'Документ отправлен на замену');
