@@ -1,0 +1,5 @@
+/out/
+*.jks
+*.keystore
+*.password
+local.properties
