@@ -2,7 +2,7 @@ import citiesData from './cities.json';
 export const cities = citiesData;
 export const cityById = (id:string) => cities.find(c=>c.id===id);
 export const cents = (rubles:number) => Math.round(rubles*100);
-export const payoutFor = (gross:number) => Math.floor(gross*75/100);
+export const payoutFor = (gross:number) => Math.floor(gross*65/100);
 export const activeStatuses = ['contract_pending','admin_review','assigned','en_route','in_progress','review'];
 export function timeWindow(date:string,time:string,offset:string,hours:number){
  const start=Date.parse(`${date}T${time}:00${offset}`);
