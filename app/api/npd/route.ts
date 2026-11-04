@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     const user = await currentUser();
     const workerId = new URL(req.url).searchParams.get('worker') || user.id;
     if (user.role !== 'admin' && (workerId !== user.id || !['cleaner', 'leader'].includes(user.role))) throw new HttpError(403, 'Нет доступа к статусу исполнителя');
-    const profile = await one("SELECT p.npd_inn,p.npd_consent_at,p.npd_status,p.npd_checked_at,p.npd_checked_on,p.npd_message,m.name FROM worker_profiles p JOIN members m ON m.id=p.member_id WHERE p.member_id=? AND m.role IN ('cleaner','leader')", workerId);
+    const profile = await one("SELECT p.contractor_type,p.npd_inn,p.npd_consent_at,p.npd_status,p.npd_checked_at,p.npd_checked_on,p.npd_message,m.name FROM worker_profiles p JOIN members m ON m.id=p.member_id WHERE p.member_id=? AND m.role IN ('cleaner','leader')", workerId);
     if (!profile) throw new HttpError(404, 'Анкета исполнителя не найдена');
     return json({ status: profile });
   } catch (error) { return fail(error); }
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       const inn = body.inn ? body.inn.replace(/\s/g, '') : '';
       if (!validInn(inn)) throw new HttpError(400, 'Проверьте ИНН: контрольные цифры не совпадают');
       await run('INSERT INTO worker_profiles(member_id,updated) VALUES(?,?) ON CONFLICT(member_id) DO NOTHING', user.id, now());
-      await run('UPDATE worker_profiles SET npd_inn=?,npd_consent_at=?,npd_status=NULL,npd_checked_at=NULL,npd_checked_on=NULL,npd_message=?,updated=? WHERE member_id=?', inn, now(), 'Ожидает проверки ФНС', now(), user.id);
+      await run('UPDATE worker_profiles SET contractor_type=\'npd\',verified=0,npd_inn=?,npd_consent_at=?,npd_status=NULL,npd_checked_at=NULL,npd_checked_on=NULL,npd_message=?,updated=? WHERE member_id=?', inn, now(), 'Ожидает проверки ФНС', now(), user.id);
       await event(null, user.id, 'Исполнитель предоставил ИНН и согласие на ежедневную проверку НПД');
       return json({ ok: true, message: 'ИНН сохранён. После проверки ФНС статус появится в анкете.' });
     }
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     requireAdmin(user);
     const workerId = z.string().uuid().parse(body.workerId);
     const profile = await one("SELECT p.npd_inn,p.npd_consent_at,m.name FROM worker_profiles p JOIN members m ON m.id=p.member_id WHERE p.member_id=? AND m.role IN ('cleaner','leader')", workerId);
-    if (!profile?.npd_inn || !profile.npd_consent_at) throw new HttpError(409, 'Исполнитель ещё не предоставил ИНН и согласие на проверку');
+    if (profile?.contractor_type !== 'npd' || !profile.npd_inn || !profile.npd_consent_at) throw new HttpError(409, 'Исполнитель ещё не предоставил ИНН и согласие на проверку');
     const nowMs = Date.now();
     const reserved = await run('UPDATE npd_check_gate SET last_request_at=? WHERE id=1 AND last_request_at<=?', nowMs, nowMs - 35_000);
     if (!reserved.meta.changes) throw new HttpError(429, 'Сервис ФНС ограничивает частоту проверок. Попробуйте через минуту.');
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
     }
 
     const checkedAt = now();
-    const saved = await run('UPDATE worker_profiles SET npd_status=?,npd_checked_at=?,npd_checked_on=?,npd_message=?,updated=? WHERE member_id=? AND npd_inn=? AND npd_consent_at=?', status === null ? null : status ? 1 : 0, checkedAt, requestDate, message, checkedAt, workerId, profile.npd_inn, profile.npd_consent_at);
+    const saved = await run('UPDATE worker_profiles SET npd_status=?,npd_checked_at=?,npd_checked_on=?,npd_message=?,updated=? WHERE member_id=? AND contractor_type=\'npd\' AND npd_inn=? AND npd_consent_at=?', status === null ? null : status ? 1 : 0, checkedAt, requestDate, message, checkedAt, workerId, profile.npd_inn, profile.npd_consent_at);
     if (!saved.meta.changes) throw new HttpError(409, 'ИНН изменился во время проверки. Проверьте актуальные данные.');
     await event(null, user.id, `Проверен статус НПД исполнителя ${profile.name}: ${status === null ? 'ошибка проверки' : status ? 'активен' : 'не зарегистрирован'}`);
     const notice = status === true ? 'ФНС подтвердила активный статус самозанятого. Приём заказов разрешён.' : status === false ? 'ФНС не подтвердила статус самозанятого. Приём новых заказов приостановлен. Оформите НПД и сообщите администрации.' : 'Проверка ФНС не завершилась. Приём новых заказов временно приостановлен до подтверждения статуса.';
