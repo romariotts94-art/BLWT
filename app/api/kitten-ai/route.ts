@@ -214,6 +214,8 @@ export async function POST(req:Request){
   if(!allowRequest(req))return Response.json({error:'Слишком много запросов. Попробуйте через минуту.'},{status:429,headers:{'Cache-Control':'no-store'}});
   const parsed=bodySchema.parse(await readJsonBody(req));
   const runtimeEnv=env as unknown as Record<string,unknown>;
+  // Enable only after documenting and approving the actual cross-border data flow.
+  if(!['1','true'].includes(String(runtimeEnv.QWEN_ENABLED||'').toLowerCase()))return Response.json({error:'ИИ-помощник пока не настроен.'},{status:503,headers:{'Cache-Control':'no-store'}});
   const apiKey=String(runtimeEnv.QWEN_API_KEY||'').trim();
   const workspaceId=String(runtimeEnv.QWEN_WORKSPACE_ID||'').trim();
   const modelId=String(runtimeEnv.QWEN_MODEL||'qwen-turbo').trim()||'qwen-turbo';

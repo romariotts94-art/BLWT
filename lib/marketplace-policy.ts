@@ -1,6 +1,8 @@
 import citiesData from './cities.json';
-export const cities = citiesData;
-export const cityById = (id:string) => cities.find(c=>c.id===id);
+export const cities = citiesData.filter(c=>c.name==='Москва'&&c.region==='Москва');
+export const launchCityId = cities[0].id;
+export const cityById = (id:string) => citiesData.find(c=>c.id===id);
+export const isLaunchCity = (id:string) => cities.some(c=>c.id===id);
 export const cents = (rubles:number) => Math.round(rubles*100);
 export const payoutFor = (gross:number) => Math.floor(gross*65/100);
 export const activeStatuses = ['contract_pending','admin_review','assigned','en_route','in_progress','review'];
@@ -21,7 +23,8 @@ export function projectOrder(o:any,u:any){
  if(isAdmin)return o;
  const worker=!client, isAssigned=['assigned','en_route','in_progress','review','completed'].includes(o.status),assignedWorker=worker&&(o.assignedWorkerId===u.id||o.crew.includes(u.id))&&isAssigned;
  const q=worker?{total:Number(o.payoutCents??payoutFor(cents(o.quote.total)))/100,hours:o.quote.hours,workers:o.quote.workers,needsEstimate:o.quote.needsEstimate}:{total:o.quote.total,base:o.quote.base,multiplier:o.quote.multiplier,additions:o.quote.additions,hours:o.quote.hours,workers:o.quote.workers,needsEstimate:o.quote.needsEstimate};
- const common:any={id:o.id,status:client&&['contract_pending','admin_review'].includes(o.status)?'offered':o.status,created:o.created,updated:o.updated,revision:o.revision,cityId:o.cityId,city:o.city,region:o.region,timezone:o.timezone,date:o.date,time:o.time,service:o.service,catalogService:o.catalogService,area:o.area,dirt:o.dirt,frequency:o.frequency,extras:o.extras,urgent:o.urgent,quote:q,quoteAccepted:o.quoteAccepted,checklist:o.checklist,liveConsent:o.liveConsent,payment:o.payment,photoPending:client?o.photoPending:undefined,preferences:o.preferences||{},productsUsed:o.productsUsed||'',marketplaceVersion:o.marketplaceVersion,clientId:client?u.id:undefined,crew:worker&&o.crew.includes(u.id)?[u.id]:[],target:worker&&o.crew.includes(u.id)?u.id:null,companyTeam:isAssigned?(o.quote.workers>1?'Команда Black to White':'Сотрудник Black to White'):null,claimUntil:worker?o.claimUntil:undefined,liveStates:worker?o.liveStates:{}};
+ const preferences=worker&&!assignedWorker?{...(o.preferences||{}),instructions:''}:o.preferences||{};
+ const common:any={id:o.id,status:client&&['contract_pending','admin_review'].includes(o.status)?'offered':o.status,created:o.created,updated:o.updated,revision:o.revision,cityId:o.cityId,city:o.city,region:o.region,timezone:o.timezone,date:o.date,time:o.time,service:o.service,catalogService:o.catalogService,area:o.area,dirt:o.dirt,frequency:o.frequency,extras:o.extras,urgent:o.urgent,quote:q,quoteAccepted:o.quoteAccepted,checklist:o.checklist,liveConsent:o.liveConsent,payment:o.payment,photoPending:client?o.photoPending:undefined,preferences,productsUsed:o.productsUsed||'',marketplaceVersion:o.marketplaceVersion,clientId:client?u.id:undefined,crew:worker&&o.crew.includes(u.id)?[u.id]:[],target:worker&&o.crew.includes(u.id)?u.id:null,companyTeam:isAssigned?(o.quote.workers>1?'Исполнители-партнеры BLWT':'Независимый исполнитель платформы'):null,claimUntil:worker?o.claimUntil:undefined,liveStates:worker?o.liveStates:{}};
  if(client)return {...common,canRequestReplacement:Boolean(o.assignedWorkerId)&&Number(o.startAt)>Date.now()&&['contract_pending','admin_review','assigned','en_route'].includes(o.status),name:o.name,phone:o.phone,address:o.address,notes:o.notes,accessNote:o.accessNote,issue:o.issue,issueResolution:o.issueResolution,review:o.review};
  return {...common,address:assignedWorker?safeWorkerText(o.address):'Точный адрес после принятия',notes:assignedWorker?safeWorkerText(o.notes,o.name):'',issue:assignedWorker?safeWorkerText(o.issue,o.name):'',issueResolution:assignedWorker?safeWorkerText(o.issueResolution,o.name):'',accessNote:assignedWorker?safeWorkerText(o.accessNote,o.name):''};
 }

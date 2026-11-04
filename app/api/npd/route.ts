@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
     requireAdmin(user);
     const workerId = z.string().uuid().parse(body.workerId);
-    const profile = await one("SELECT p.npd_inn,p.npd_consent_at,m.name FROM worker_profiles p JOIN members m ON m.id=p.member_id WHERE p.member_id=? AND m.role IN ('cleaner','leader')", workerId);
+    const profile = await one("SELECT p.contractor_type,p.npd_inn,p.npd_consent_at,m.name FROM worker_profiles p JOIN members m ON m.id=p.member_id WHERE p.member_id=? AND m.role IN ('cleaner','leader')", workerId);
     if (profile?.contractor_type !== 'npd' || !profile.npd_inn || !profile.npd_consent_at) throw new HttpError(409, 'Исполнитель ещё не предоставил ИНН и согласие на проверку');
     const nowMs = Date.now();
     const reserved = await run('UPDATE npd_check_gate SET last_request_at=? WHERE id=1 AND last_request_at<=?', nowMs, nowMs - 35_000);

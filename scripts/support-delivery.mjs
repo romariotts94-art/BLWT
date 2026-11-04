@@ -5,15 +5,10 @@ const token=process.env.TELEGRAM_BOT_TOKEN, chats=[...new Set((process.env.TELEG
 let stopping=false;process.on('SIGTERM',()=>{stopping=true});process.on('SIGINT',()=>{stopping=true});
 let lastMarketplaceSweep=0;
 async function sweepMarketplace(client){
- const now=Date.now(),iso=new Date(now).toISOString(),bucket=Math.floor(now/900000),hour=Math.floor(now/3600000);
- await client.query(`INSERT INTO notices(id,user_id,order_id,text,created,dedupe_key)
- SELECT gen_random_uuid()::text,m.id,o.id,'Напоминание: заказ всё ещё открыт · '||COALESCE(c.name,'ваш город')||' · '||(o.details::jsonb->>'date')||', '||(o.details::jsonb->>'time'),$1,
- 'offer-reminder:'||o.id||':'||m.id||':'||$2
- FROM orders o CROSS JOIN worker_profiles p JOIN members m ON m.id=p.member_id LEFT JOIN cities c ON c.id=p.city_id
- WHERE o.marketplace_version=1 AND o.status='offered' AND o.start_at>$3 AND (o.details::jsonb->>'quoteAccepted')='true'
- AND m.active=1 AND m.role IN ('cleaner','leader') AND p.enabled=1 AND p.verified=1 AND p.city_id=o.city_id AND length(trim(p.bio))>=30 AND EXISTS(SELECT 1 FROM cleaner_cards c WHERE c.member_id=p.member_id AND length(trim(c.display_name))>=2 AND c.avatar_key IS NOT NULL)
- AND NOT EXISTS(SELECT 1 FROM order_skips s WHERE s.order_id=o.id AND s.worker_id=p.member_id AND s.snoozed_until>$3)
- ON CONFLICT DO NOTHING`,[iso,bucket,now]);
+ const now=Date.now(),iso=new Date(now).toISOString(),hour=Math.floor(now/3600000);
+ // Offer notifications are emitted by marketplace.ts using the same eligibility
+ // predicate as the atomic accept. A second, weaker predicate here could notify
+ // a worker who cannot legally or practically accept the order.
  await client.query(`WITH expired AS (
  UPDATE orders SET status='needs_reschedule',revision=revision+1,updated=$1
  WHERE marketplace_version=1 AND status='offered' AND start_at<=$2
@@ -23,14 +18,13 @@ async function sweepMarketplace(client){
  UNION ALL SELECT e.id,m.id,'Просрочен открытый заказ: клиенту предложено выбрать новую дату.','admin' FROM expired e JOIN members m ON m.role='admin' AND m.active=1
  ) INSERT INTO notices(id,user_id,order_id,text,created,dedupe_key)
  SELECT gen_random_uuid()::text,user_id,id,text,$1,'reschedule:'||id||':'||role FROM recipients ON CONFLICT DO NOTHING`,[iso,now]);
- await client.query(`WITH unmatched AS MATERIALIZED (
+ await client.query(`WITH open_orders AS (
  SELECT o.id,o.client_id FROM orders o WHERE o.marketplace_version=1 AND o.status='offered' AND o.start_at>$3 AND (o.details::jsonb->>'quoteAccepted')='true'
- AND NOT EXISTS(SELECT 1 FROM worker_profiles p JOIN members w ON w.id=p.member_id WHERE w.active=1 AND w.role IN ('cleaner','leader') AND p.enabled=1 AND p.verified=1 AND p.city_id=o.city_id AND length(trim(p.bio))>=30 AND EXISTS(SELECT 1 FROM cleaner_cards c WHERE c.member_id=p.member_id AND length(trim(c.display_name))>=2 AND c.avatar_key IS NOT NULL))
  ), recipients AS (
- SELECT o.id,m.id AS user_id,'Заказ пока ждёт исполнителя. Мы продолжаем подбор и сообщим, если потребуется новая дата.' AS text,'client' AS role FROM unmatched o JOIN members m ON m.id=o.client_id
- UNION ALL SELECT o.id,m.id,'Пока нет допущенных исполнителей в городе заказа. Проверьте профиль города и свяжитесь с клиентом.','admin' FROM unmatched o JOIN members m ON m.role='admin' AND m.active=1
+ SELECT o.id,o.client_id AS user_id,'Заказ пока ждёт исполнителя. Откройте карточку для проверки статуса.' AS text,'client' AS role FROM open_orders o
+ UNION ALL SELECT o.id,m.id,'Открытый заказ ещё не принят. Проверьте подбор и при необходимости свяжитесь с клиентом.','admin' FROM open_orders o JOIN members m ON m.role='admin' AND m.active=1
  ) INSERT INTO notices(id,user_id,order_id,text,created,dedupe_key)
- SELECT gen_random_uuid()::text,user_id,id,text,$1,'offer-no-match:'||id||':'||role||':'||$2 FROM recipients ON CONFLICT DO NOTHING`,[iso,hour,now]);
+ SELECT gen_random_uuid()::text,user_id,id,text,$1,'offer-pending:'||id||':'||role||':'||$2 FROM recipients ON CONFLICT DO NOTHING`,[iso,hour,now]);
 }
 async function tick(){const client=await pool.connect();try{
  await client.query('BEGIN');

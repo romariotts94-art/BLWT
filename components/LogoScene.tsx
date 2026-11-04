@@ -1,15 +1,14 @@
 'use client';
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useRef} from 'react';
 import {LOGO_SCENE_DURATION,LOGO_SCENE_INTERVAL,LOGO_SCENE_REST,logoSceneFrame,logoSceneGeometry} from '../lib/logo-animation';
 
 const SPRITES=['/media/cleaning-kitten-logo-choreography-v4.webp','/media/cleaning-kitten-logo-heart.webp','/media/cleaning-kitten-logo-tools-v4.webp'];
 /** Animate the existing brand DOM: the font, symbol, accessible name and link stay intact. */
 export default function LogoScene({children,enabled=true}:{children:React.ReactNode;enabled?:boolean}){
  const root=useRef<HTMLSpanElement>(null),ink=useRef<HTMLSpanElement>(null),cat=useRef<HTMLSpanElement>(null),props=useRef<HTMLSpanElement>(null);
- const [paused,setPaused]=useState(false);
  const stop=useRef(()=>{});
  useEffect(()=>{
-  if(!enabled||paused||!root.current||!ink.current||!cat.current||!props.current)return;
+  if(!enabled||!root.current||!ink.current||!cat.current||!props.current)return;
   const host=root.current,original=ink.current,actor=cat.current,equipment=props.current;
   const header=host.closest<HTMLElement>('.public-header');
   const calculator=header?.querySelector<HTMLElement>('.bw-header-calc');
@@ -80,12 +79,11 @@ export default function LogoScene({children,enabled=true}:{children:React.ReactN
   document.addEventListener('visibilitychange',onVisibility);motion.addEventListener('change',onMotion);
   stop.current=()=>{cancelSchedule();restore();schedule(LOGO_SCENE_REST)};
   return()=>{disposed=true;cancelSchedule();restore();resize.disconnect();observer.disconnect();window.removeEventListener('resize',measure);sprites.forEach(sprite=>{sprite.onload=null;sprite.onerror=null});document.removeEventListener('visibilitychange',onVisibility);motion.removeEventListener('change',onMotion);stop.current=()=>{}};
- },[enabled,paused]);
+  },[enabled]);
  if(!enabled)return <>{children}</>;
  return <span ref={root} className="bw-logo-scene" data-phase="idle">
   <span ref={ink} className="bw-logo-original" onFocus={()=>stop.current()} onClick={()=>stop.current()}>{children}</span>
   <span ref={props} className="bw-logo-equipment" aria-hidden="true"/>
   <span ref={cat} className="bw-logo-cat" data-sheet="actions" aria-hidden="true"><span/></span>
-  <button type="button" className="bw-logo-motion-toggle" aria-label={paused?'Включить анимацию котика у логотипа':'Приостановить анимацию котика у логотипа'} title={paused?'Включить анимацию':'Пауза анимации'} aria-pressed={paused} onClick={()=>setPaused(value=>!value)}><span aria-hidden="true">{paused?'▷':'Ⅱ'}</span></button>
  </span>;
 }

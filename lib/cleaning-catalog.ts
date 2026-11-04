@@ -2,7 +2,7 @@ export const cleaningCatalog = [
   ['standard','Поддерживающая','standard'],['recurring','Регулярная','standard'],['one-time','Разовая','standard'],
   ['deep','Генеральная','deep'],['spring','Сезонная','deep'],['move-in','После переезда','deep'],['move-out','Перед выездом','deep'],
   ['renovation','После ремонта','renovation'],['rental','Посуточная аренда','standard'],['event','После мероприятия','deep'],
-  ['urgent','Срочная','standard'],['disinfecting','Дезинфекция','standard'],['office','Уборка офиса','office'],
+  ['urgent','Срочная','standard'],['office','Уборка офиса','office'],
   ['commercial','Коммерческая','custom'],['garage','Уборка гаража','custom'],['carpet','Чистка ковров','custom'],
   ['windows','Мытьё окон','custom'],['upholstery','Матрасы и мебель','custom'],['car','Салон автомобиля','custom'],
   ['household','Стирка и быт','standard'],['organization','Организация пространства','custom'],['pressure-washing','Мойка фасадов и дорожек','custom'],
