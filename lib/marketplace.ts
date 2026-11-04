@@ -12,6 +12,7 @@ const npdToday=()=>{
  const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
  return `${values.year}-${values.month}-${values.day}`;
 };
+const contractorStatusCurrent=(p:any)=>p?.contractor_type==='npd'?!!p.npd_inn&&Number(p.npd_status)===1&&p.npd_checked_on===npdToday():p?.contractor_type==='ip'?!!p.ip_inn&&!!p.ip_ogrnip&&Number(p.ip_status)===1&&p.ip_checked_on===npdToday():false;
 const validId=(v:any)=>z.string().uuid().parse(v);
 const text=(v:any,max=2000)=>z.string().trim().min(1).max(max).parse(v);
 const parse=(v:any,fallback:any)=>{try{return JSON.parse(v)}catch{return fallback}};
@@ -40,26 +41,26 @@ async function patch(tx:Tx,o:any,delta:any,actor:string,action:string){
  if(!r.meta.changes)throw new HttpError(409,'Заказ изменился. Обновите карточку.');await log(tx,id,actor,action);return merged;
 }
 // One shared SQL predicate is used by discovery, notifications and acceptance.
-// Only active, verified cleaners with a current NPD check see open offers.
+// Only active, verified NPD or IP contractors with a current tax-status check see open offers.
 // The conditional order update below makes the first accept win atomically.
 const eligibilityWhere=`
  o.marketplace_version=1 AND o.status='offered' AND ${quoteAcceptedSql} AND o.start_at>?
  AND m.active=1 AND m.role IN ('cleaner','leader') AND m.id<>o.client_id
- AND EXISTS (SELECT 1 FROM worker_profiles wp WHERE wp.member_id=m.id AND (wp.city_id=o.city_id OR ${extraCityMatchSql}) AND wp.verified=1 AND wp.npd_status=1 AND wp.npd_checked_on=?)
+ AND EXISTS (SELECT 1 FROM worker_profiles wp WHERE wp.member_id=m.id AND (wp.city_id=o.city_id OR ${extraCityMatchSql}) AND wp.verified=1 AND ((wp.contractor_type='npd' AND wp.npd_status=1 AND wp.npd_checked_on=?) OR (wp.contractor_type='ip' AND wp.ip_status=1 AND wp.ip_checked_on=?)))
  AND NOT EXISTS (SELECT 1 FROM order_skips skipped WHERE skipped.order_id=o.id AND skipped.worker_id=m.id AND skipped.snoozed_until>?)
 `;
 export async function eligible(o:any,id:string,tx:Tx=read,at=Date.now()){
  if(o.marketplaceVersion!==1||o.status!=='offered')return false;
- return !!await tx.one(`SELECT 1 FROM orders o JOIN members m ON m.id=? WHERE o.id=? AND ${eligibilityWhere}`,id,o.id,at,npdToday(),at);
+ return !!await tx.one(`SELECT 1 FROM orders o JOIN members m ON m.id=? WHERE o.id=? AND ${eligibilityWhere}`,id,o.id,at,npdToday(),npdToday(),at);
 }
 export async function broadcast(tx:Tx,o:any){
  if(o.status!=='offered')return;
- const at=Date.now(),workers=await tx.all(`SELECT m.id AS member_id FROM orders o JOIN members m ON 1=1 WHERE o.id=? AND ${eligibilityWhere}`,o.id,at,npdToday(),at);
+ const at=Date.now(),workers=await tx.all(`SELECT m.id AS member_id FROM orders o JOIN members m ON 1=1 WHERE o.id=? AND ${eligibilityWhere}`,o.id,at,npdToday(),npdToday(),at);
  for(const worker of workers)await tx.run(`INSERT INTO notices(id,user_id,order_id,text,created,dedupe_key) VALUES(?,?,?,?,?,?) ON CONFLICT DO NOTHING`,uid(),worker.member_id,o.id,`Новый заказ · ${o.city} · ${o.date}, ${o.time} · к получению ${o.payoutCents/100} ₽`,now(),'offer:'+o.id+':'+worker.member_id);
 }
 async function notifyWorkerOffers(tx:Tx,workerId:string){
  const at=Date.now();
- const orders=await tx.all(`SELECT o.id,o.details,m.id AS member_id FROM orders o JOIN members m ON m.id=? WHERE ${eligibilityWhere}`,workerId,at,npdToday(),at);
+ const orders=await tx.all(`SELECT o.id,o.details,m.id AS member_id FROM orders o JOIN members m ON m.id=? WHERE ${eligibilityWhere}`,workerId,at,npdToday(),npdToday(),at);
  for(const order of orders){const details=parse(order.details,{});await tx.run(`INSERT INTO notices(id,user_id,order_id,text,created,dedupe_key) VALUES(?,?,?,?,?,?) ON CONFLICT DO NOTHING`,uid(),workerId,order.id,`Новый заказ · ${details.city||'город'} · ${details.date||''}, ${details.time||''}`,now(),'offer:'+order.id+':'+workerId);}
 }
 export async function expireClaims(){
@@ -87,7 +88,7 @@ export async function marketSnapshot(u:any,url:URL){
  let rows:any[];
  if(u.role==='admin')rows=await all('SELECT * FROM orders ORDER BY created DESC LIMIT 1000');
  else if(u.role==='client')rows=await all('SELECT * FROM orders WHERE client_id=? ORDER BY created DESC LIMIT 1000',u.id);
- else {const at=Date.now();rows=await all(`SELECT o.* FROM orders o WHERE o.assigned_worker_id=? OR ${crewMemberSql} OR EXISTS(SELECT 1 FROM members m WHERE m.id=? AND ${eligibilityWhere}) ORDER BY o.created DESC LIMIT 1000`,u.id,u.id,u.id,at,npdToday(),at);}
+ else {const at=Date.now();rows=await all(`SELECT o.* FROM orders o WHERE o.assigned_worker_id=? OR ${crewMemberSql} OR EXISTS(SELECT 1 FROM members m WHERE m.id=? AND ${eligibilityWhere}) ORDER BY o.created DESC LIMIT 1000`,u.id,u.id,u.id,at,npdToday(),npdToday(),at);}
  const id=url.searchParams.get('order');let selected:any;if(id){selected=await marketAccess(validId(id),u,true);if(!rows.some(r=>r.id===id))rows.unshift(await one('SELECT * FROM orders WHERE id=?',id));}
  const result:any={user:u,orders:rows.map(unpack).map(o=>projectOrder(o,u)),people:[],teams:[],rates:await rates(),notifications:await all('SELECT * FROM notices WHERE user_id=? ORDER BY created DESC LIMIT 80',u.id),lessons};
  if(['cleaner','leader'].includes(u.role)){
@@ -95,7 +96,7 @@ export async function marketSnapshot(u:any,url:URL){
  if(offers.length){const ids=offers.map((o:any)=>o.id),photos=await all(`SELECT order_id,id FROM media WHERE purpose='brief' AND order_id IN (${ids.map(()=>'?').join(',')}) ORDER BY created`,...ids);for(const o of offers)o.briefPhotos=photos.filter((m:any)=>m.order_id===o.id).map((m:any)=>m.id);}
  }
  if(u.role==='admin'){
- result.matching=await all(`SELECT o.id,COUNT(*) AS count FROM orders o JOIN members m ON ${eligibilityWhere} GROUP BY o.id`,Date.now(),npdToday(),Date.now());
+ result.matching=await all(`SELECT o.id,COUNT(*) AS count FROM orders o JOIN members m ON ${eligibilityWhere} GROUP BY o.id`,Date.now(),npdToday(),npdToday(),Date.now());
  result.people=await all('SELECT id,email,name,role,team_id,active FROM members ORDER BY name');result.teams=await all('SELECT * FROM teams');result.invitations=await all('SELECT * FROM invitations');result.audit=await all('SELECT * FROM audit ORDER BY created DESC LIMIT 60');
  result.workers=(await all("SELECT p.*,m.name,m.email,m.active,m.role,c.name AS city,c.region,(SELECT MAX(valid_until) FROM quality_attempts q WHERE q.worker_id=p.member_id AND q.passed=1) AS training_until FROM worker_profiles p JOIN members m ON m.id=p.member_id LEFT JOIN cities c ON c.id=p.city_id WHERE m.role IN ('cleaner','leader') ORDER BY m.name")).map(profile);
  result.customers=await all('SELECT p.*,m.email,c.id AS city_id,c.name AS city,c.region,cc.last_order_at,(SELECT COUNT(*) FROM orders o WHERE o.client_id=p.member_id) AS order_count FROM customer_profiles p JOIN members m ON m.id=p.member_id LEFT JOIN customer_cities cc ON cc.member_id=p.member_id LEFT JOIN cities c ON c.id=cc.city_id ORDER BY p.updated DESC LIMIT 1000');
@@ -163,7 +164,7 @@ export async function marketAction(u:any,b:any){
  });return {ok:true};
  }
  if(b.action==='verifyWorker'){
- requireAdmin(u);const id=validId(b.workerId),capacity=z.number().int().min(1).max(12).parse(b.capacity);await transaction(async tx=>{const p=await tx.one('SELECT * FROM worker_profiles WHERE member_id=?',id),card=await tx.one('SELECT display_name,avatar_key FROM cleaner_cards WHERE member_id=?',id);if(!p?.city_id||String(p.bio||'').trim().length<30||String(card?.display_name||'').trim().length<2||!card?.avatar_key)throw new HttpError(400,'Для допуска нужны город, описание от 30 символов, имя в анкете и фото профиля');if(b.verified===true&&(!p.npd_inn||Number(p.npd_status)!==1||p.npd_checked_on!==npdToday()))throw new HttpError(409,'Сначала внесите ИНН и подтвердите действующий статус НПД через ФНС сегодня.');await tx.run('UPDATE worker_profiles SET verified=?,capacity=?,updated=? WHERE member_id=?',b.verified===true?1:0,capacity,now(),id);await log(tx,null,u.id,b.verified===true?'Профиль проверен и допущен':'Допуск исполнителя снят');await tell(tx,[id],null,b.verified?'Профиль проверен. Вы можете получать новые предложения.':'Допуск снят. Обратитесь к администратору.');if(b.verified===true)await notifyWorkerOffers(tx,id);});return {ok:true};
+ requireAdmin(u);const id=validId(b.workerId),capacity=z.number().int().min(1).max(12).parse(b.capacity);await transaction(async tx=>{const p=await tx.one('SELECT * FROM worker_profiles WHERE member_id=?',id),card=await tx.one('SELECT display_name,avatar_key FROM cleaner_cards WHERE member_id=?',id);if(!p?.city_id||String(p.bio||'').trim().length<30||String(card?.display_name||'').trim().length<2||!card?.avatar_key)throw new HttpError(400,'Для допуска нужны город, описание от 30 символов, имя в анкете и фото профиля');if(b.verified===true&&!contractorStatusCurrent(p))throw new HttpError(409,'Подтвердите сегодня статус НПД через ФНС или статус ИП по актуальной выписке ЕГРИП.');await tx.run('UPDATE worker_profiles SET verified=?,capacity=?,updated=? WHERE member_id=?',b.verified===true?1:0,capacity,now(),id);await log(tx,null,u.id,b.verified===true?'Профиль проверен и допущен':'Допуск исполнителя снят');await tell(tx,[id],null,b.verified?'Профиль проверен. Вы можете получать новые предложения.':'Допуск снят. Обратитесь к администратору.');if(b.verified===true)await notifyWorkerOffers(tx,id);});return {ok:true};
  }
  if(b.action==='qualityTest'){
  worker(u);return transaction(async tx=>{const p=await tx.one('SELECT * FROM worker_profiles WHERE member_id=? FOR UPDATE',u.id);if(!p)throw new HttpError(400,'Сначала заполните профиль');const ctx=weekContext(cityById(p.city_id)?.timezone);if(b.week!==ctx.week)throw new HttpError(409,'Началась новая неделя. Обновите тест');const recent=await tx.one('SELECT created FROM quality_attempts WHERE worker_id=? ORDER BY created DESC LIMIT 1',u.id);if(recent&&Date.now()-Date.parse(recent.created)<30000)throw new HttpError(429,'Повторите тест через 30 секунд');const answers=z.record(z.string(),z.number().int().min(0).max(2)).parse(b.answers),qs=examFor(ctx.week);if(qs.some(q=>answers[q.id]===undefined))throw new HttpError(400,'Ответьте на все вопросы');const score=qs.filter(q=>answers[q.id]===q.answer).length,passed=score>=4;await tx.run('INSERT INTO quality_attempts(id,worker_id,week,score,passed,valid_until,created) VALUES(?,?,?,?,?,?,?)',uid(),u.id,ctx.week,score,passed?1:0,ctx.validUntil,now());return {ok:true,score,passed};});
@@ -185,7 +186,7 @@ export async function marketAction(u:any,b:any){
  await tx.one('SELECT member_id FROM worker_profiles WHERE member_id=? FOR UPDATE',u.id);
  const row=await tx.one('SELECT * FROM orders WHERE id=?',id);if(!row)throw new HttpError(404,'Заказ не найден');const o=unpack(row);
  if(o.assignedWorkerId===u.id&&['assigned','en_route','in_progress','review'].includes(o.status))return {ok:true};
- const npd=await tx.one(`SELECT npd_inn,npd_status,npd_checked_on,verified FROM worker_profiles WHERE member_id=?${isPostgresRuntime?' FOR UPDATE':''}`,u.id);if(!npd?.verified)throw new HttpError(403,'Профиль исполнителя должен быть подтверждён администратором.');if(!npd?.npd_inn)throw new HttpError(403,'Чтобы принимать заказы, заполните ИНН и оформите статус самозанятого. Откройте профиль исполнителя.');if(Number(npd.npd_status)!==1||npd.npd_checked_on!==npdToday())throw new HttpError(403,'ФНС ещё не подтвердила действующий статус самозанятого сегодня. Приём заказов временно закрыт.');if(!await eligible(o,u.id,tx))throw new HttpError(409,'Заказ уже принят другим исполнителем или предложение закрыто');
+ const contractor=await tx.one(`SELECT contractor_type,npd_inn,npd_status,npd_checked_on,ip_inn,ip_ogrnip,ip_status,ip_checked_on,verified FROM worker_profiles WHERE member_id=?${isPostgresRuntime?' FOR UPDATE':''}`,u.id);if(!contractor?.verified)throw new HttpError(403,'Профиль исполнителя должен быть подтверждён администратором.');if(!contractorStatusCurrent(contractor))throw new HttpError(403,'Нужна сегодняшняя проверка статуса НПД или ИП по ИНН. Приём заказов временно закрыт.');if(!await eligible(o,u.id,tx))throw new HttpError(409,'Заказ уже принят другим исполнителем или предложение закрыто');
  const rules=await marketRules(tx);if(!rules.termsApproved)throw new HttpError(409,'Условия сотрудничества ещё не утверждены администратором.');
  const profile=await tx.one('SELECT travel_minutes FROM worker_profiles WHERE member_id=?',u.id);
  const travel=Math.max(30,Number(profile?.travel_minutes)||60)*60000;
