@@ -14,7 +14,7 @@ const innChecksum = (value: string, coefficients: number[]) => coefficients.redu
 const validInn = (value: string) => /^\d{12}$/.test(value) &&
   innChecksum(value, [7, 2, 4, 10, 3, 5, 9, 4, 6, 8]) === Number(value[10]) &&
   innChecksum(value, [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8]) === Number(value[11]);
-const validOgrnip = (value: string) => /^\d{15}$/.test(value) && Number((BigInt(value.slice(0, 14)) % 13n) % 10n) === Number(value[14]);
+const validOgrnip = (value: string) => /^\d{15}$/.test(value) && value.slice(0, 14).split('').reduce((remainder, digit) => (remainder * 10 + Number(digit)) % 13, 0) % 10 === Number(value[14]);
 
 export async function POST(req: Request) {
   try {
