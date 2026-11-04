@@ -31,7 +31,7 @@ function ContractorStatus({workerId,profile,admin,editable,onUpdated}:{workerId:
   const checkedOn=type==='ip'?profile?.ip_checked_on:profile?.npd_checked_on;
   const status=type==='ip'?profile?.ip_status:profile?.npd_status;
   const active=current&&Number(status)===1&&checkedOn===today;
-  const label=active?'Статус подтверждён сегодня':current&&Number(status)===0&&checkedOn===today?'Статус не подтверждён':`Последняя проверка: ${checkedOn||'нет данных'}`;
+  const label=active?'Статус подтверждён сегодня':current&&status!=null&&Number(status)===0&&checkedOn===today?'Статус не подтверждён':`Последняя проверка: ${checkedOn||'нет данных'}`;
   async function save(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');setMessage('');try{
     const path=type==='ip'?'/api/ip':'/api/npd';
     const body=type==='ip'?{action:'save',inn,ogrnip,consent}:{action:'saveInn',inn,consent};
