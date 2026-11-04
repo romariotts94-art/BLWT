@@ -14,7 +14,7 @@ export const cardSchema=z.object({
 export function preferenceLabels(p:any={}){return [p.gender==='female'?'Только женщина':p.gender==='male'?'Только мужчина':null,p.fragranceFree?'Средства без отдушки; согласовать состав':null,p.pets?'В доме животные':null,p.ownProducts?'Средства заказчика':null,p.delicate?'Деликатные поверхности':null,p.instructions].filter(Boolean) as string[];}
 export function matchesPreferences(p:any={},c:any={}){return (p.gender===undefined||p.gender==='any'||p.gender===c.gender)&&(!p.fragranceFree||Boolean(c.fragrance_free))&&(!p.pets||Boolean(c.pet_friendly))&&(!p.ownProducts||Boolean(c.own_products));}
 export function publicCard(row:any,reviews:any[]=[]){return {
- id:row.member_id,name:row.display_name||row.name,bio:row.bio||'',city:row.city||'',
+ id:row.member_id,name:row.display_name||row.name,bio:row.bio||'',city:row.city||'',contractorIdentity:row.contractorIdentity||null,
  experienceYears:row.experience_years||0,languages:row.languages||'',specialties:row.specialties||'',
  equipment:row.equipment||'',verified:!!row.verified,completed:Number(row.completed||0),
  avatar:row.avatar_key?'/api/cleaners/avatar?id='+encodeURIComponent(row.member_id):row.avatar_url||null,
