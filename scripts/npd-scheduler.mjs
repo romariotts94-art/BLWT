@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
+import cities from '../lib/cities.json' with { type: 'json' };
+import { offerEligibilityWhere } from '../lib/offer-eligibility.mjs';
 
 const { Pool } = pg;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 1,
+  max: 2,
   connectionTimeoutMillis: 10_000,
   statement_timeout: 15_000,
 });
@@ -14,6 +16,7 @@ const REQUEST_GATE_MS = 35_000;
 const advisoryLockKeys = [1_263_943_508, 1_431_198_772];
 let stopping = false;
 let timer;
+let offerTimer;
 
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
 
@@ -180,6 +183,36 @@ async function runDailyChecks() {
   }
 }
 
+const launchCityId = cities.find((city) => city.name === 'Москва' && city.region === 'Москва')?.id;
+if (!launchCityId) throw new Error('Moscow launch city is missing');
+const offerWhere = offerEligibilityWhere(true, launchCityId);
+const numberedOfferWhere = (() => { let position = 0; return offerWhere.replace(/\?/g, () => `$${++position}`); })();
+
+async function refreshOpenOffers() {
+  if (stopping) return;
+  try {
+    const nowMs = Date.now();
+    const result = await pool.query(
+      `SELECT o.id AS order_id, o.details, m.id AS worker_id
+       FROM orders o JOIN members m ON ${numberedOfferWhere}`,
+      [nowMs, moscowDate(), moscowDate(), nowMs],
+    );
+    for (const row of result.rows) {
+      const details = typeof row.details === 'string' ? JSON.parse(row.details) : row.details;
+      await pool.query(
+        `INSERT INTO notices(id,user_id,order_id,text,created,dedupe_key)
+         VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
+        [randomUUID(), row.worker_id, row.order_id,
+          `Новый заказ · ${details.city || 'Москва'} · ${details.date || ''}, ${details.time || ''}`,
+          new Date().toISOString(), `offer:${row.order_id}:${row.worker_id}`],
+      );
+    }
+    if (result.rowCount) console.log(`Open offers refreshed: ${result.rowCount} eligible pair(s).`);
+  } catch (error) {
+    console.error('Open offer refresh failed:', error?.message || 'unknown error');
+  }
+}
+
 function scheduleNextRun() {
   if (stopping) return;
   const delay = nextDailyRunDelayMs();
@@ -196,10 +229,13 @@ process.on('SIGINT', () => { stopping = true; });
 await pool.query('SELECT 1 FROM npd_check_gate WHERE id = 1');
 console.log('NPD PostgreSQL scheduler started; one daily run at 06:00 Europe/Moscow.');
 scheduleNextRun();
+await refreshOpenOffers();
+offerTimer = setInterval(refreshOpenOffers, 60_000);
 
 async function shutdown() {
   stopping = true;
   clearTimeout(timer);
+  clearInterval(offerTimer);
   await pool.end();
 }
 

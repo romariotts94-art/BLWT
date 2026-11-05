@@ -36,8 +36,8 @@ export default function BookingWizard({draft,setDraft,rates,quote,step,setStep,p
  return <main className="booking bw-booking-flow">
   <div className="bw-booking-shell">
    <button type="button" className="text-btn bw-booking-back" onClick={step===0?onHome:()=>next(step-1)}><ArrowLeft size={18}/>{step===0?'На главную':'Назад'}</button>
-   <div className="bw-booking-heading"><span className="eyebrow">ВАШ ЗАКАЗ · {String(step+1).padStart(2,'0')} / 03</span><h1>{['Ваша уборка','Когда вам удобно','Проверим детали'][step]}</h1></div>
-    <nav className="bw-booking-progress" aria-label="Этапы оформления">{['Уборка и пожелания','Дата и контакты','Итог'].map((label,index)=><span key={label} className={step===index?'current':step>index?'complete':''}><b>{step>index?'✓':index+1}</b><span className="bw-booking-stage-copy"><small>ШАГ {String(index+1).padStart(2,'0')}</small>{label}</span></span>)}</nav>
+   <div className="bw-booking-heading"><span className="eyebrow">ВАШ ЗАКАЗ · {step+1} шаг из 3</span><h1>{['Ваша уборка','Когда вам удобно','Проверим детали'][step]}</h1></div>
+    <nav className="bw-booking-progress" aria-label="Этапы оформления">{['Уборка и пожелания','Дата и контакты','Итог'].map((label,index)=><span key={label} className={step===index?'current':step>index?'complete':''}><b>{step>index?'✓':index+1}</b><span className="bw-booking-stage-copy"><small>{index+1} шаг</small>{label}</span></span>)}</nav>
    {step===0&&<section className="booking-panel">
     {chosen?<><div className="bw-booking-selection"><CheckCircle2 size={24}/><div><strong>{cleaning.name}</strong><span>{draft.area} м²</span></div><b>{quote.total?money(quote.total):'По смете'}</b></div><CleaningScope id={cleaning.id}/></>:<p>Выберите уборку на главной странице, чтобы увидеть состав работ.</p>}
     <button type="button" className="text-btn bw-booking-change" onClick={onChoose}>{chosen?'Изменить уборку':'Выбрать уборку'} <ArrowRight size={17}/></button>

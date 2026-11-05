@@ -5,6 +5,7 @@ import { bookingSchema,calculate,services,extras,transitions,publicQuote } from 
 import { cleaningDetails } from './cleaning-catalog';
 import { cityById,isLaunchCity,launchCityId,cents,payoutFor,timeWindow,projectOrder,safeWorkerText,weekContext,lessons } from './marketplace-policy';
 import { examFor } from './quality-bank';
+import { offerEligibilityWhere } from './offer-eligibility.mjs';
 type Tx={all:(sql:string,...p:any[])=>Promise<any[]>,one:(sql:string,...p:any[])=>Promise<any>,run:(sql:string,...p:any[])=>Promise<any>};
 const read:Tx={all,one,run};
 const worker=(u:any)=>{if(!['cleaner','leader'].includes(u.role))throw new HttpError(403,'Раздел доступен исполнителю');};
@@ -23,24 +24,9 @@ const workerLocalTime=(at:number,timezone:string)=>{
 };
 const ruleDefaults={operator:'Black & White',requisites:'Будут заполнены позже',penaltyPercent:0,termsApproved:false,version:'placeholder-2026-10-21'};
 const isPostgresRuntime=typeof (env as any).DB?.transaction==='function';
-const quoteAcceptedSql=isPostgresRuntime
- ? "(o.details::jsonb->>'quoteAccepted')::boolean"
- : "json_extract(o.details,'$.quoteAccepted')=1";
 const crewMemberSql=isPostgresRuntime
  ? "EXISTS(SELECT 1 FROM jsonb_array_elements_text(o.crew::jsonb) AS crew(value) WHERE crew.value=?)"
  : "EXISTS(SELECT 1 FROM json_each(o.crew) WHERE value=?)";
-const extraCityMatchSql=isPostgresRuntime
- ? "COALESCE(NULLIF(wp.service_city_ids,''),'[]')::jsonb @> jsonb_build_array(o.city_id)"
- : "EXISTS(SELECT 1 FROM json_each(wp.service_city_ids) service_city WHERE service_city.value=o.city_id)";
-const detail=(field:string)=>isPostgresRuntime?`(o.details::jsonb->>'${field}')`:`json_extract(o.details,'$.${field}')`;
-const serviceMatchSql=isPostgresRuntime
- ? `COALESCE(wp.services,'[]')::jsonb @> jsonb_build_array(${detail('service')})`
- : `EXISTS(SELECT 1 FROM json_each(wp.services) service WHERE service.value=${detail('service')})`;
-const preference=(field:string)=>isPostgresRuntime?`(o.details::jsonb->'preferences'->>'${field}')`:`json_extract(o.details,'$.preferences.${field}')`;
-const quotedWorkers=isPostgresRuntime?`(o.details::jsonb->'quote'->>'workers')`:`json_extract(o.details,'$.quote.workers')`;
-const orderHours=isPostgresRuntime?`(o.details::jsonb->'quote'->>'hours')`:`json_extract(o.details,'$.quote.hours')`;
-const wantedExtra=isPostgresRuntime?`jsonb_each_text(COALESCE(o.details::jsonb->'extras','{}'::jsonb))`:`json_each(o.details,'$.extras')`;
-const workerExtra=isPostgresRuntime?`COALESCE(wp.extras,'[]')::jsonb @> jsonb_build_array(wanted.key)`:`EXISTS(SELECT 1 FROM json_each(wp.extras) ex WHERE ex.value=wanted.key)`;
 export async function marketRules(tx:Tx=read){const s=await tx.one("SELECT value FROM settings WHERE key='marketplace_rules'");return {...ruleDefaults,...parse(s?.value,{})};}
 async function log(tx:Tx,id:string|null,actor:string,action:string){await tx.run('INSERT INTO audit(id,order_id,actor,action,created) VALUES(?,?,?,?,?)',uid(),id,actor,action,now());}
 async function tell(tx:Tx,ids:string[],order:string|null,message:string){for(const id of new Set(ids))await tx.run('INSERT INTO notices(id,user_id,order_id,text,created) VALUES(?,?,?,?,?)',uid(),id,order,message,now());}
@@ -53,12 +39,7 @@ async function patch(tx:Tx,o:any,delta:any,actor:string,action:string){
 // One shared SQL predicate is used by discovery, notifications and acceptance.
 // Only active, verified Moscow NPD or IP contractors with a current tax-status check see open offers.
 // The conditional order update below makes the first accept win atomically.
-const eligibilityWhere=`
- o.marketplace_version=1 AND o.status='offered' AND o.city_id='${launchCityId}' AND ${quoteAcceptedSql} AND o.start_at>? AND CAST(${quotedWorkers} AS INTEGER)=1
- AND m.active=1 AND m.role IN ('cleaner','leader') AND m.id<>o.client_id
- AND EXISTS (SELECT 1 FROM worker_profiles wp WHERE wp.member_id=m.id AND wp.city_id=o.city_id AND wp.enabled=1 AND wp.verified=1 AND ${serviceMatchSql} AND wp.capacity>=CAST(${quotedWorkers} AS INTEGER) AND wp.min_payout_cents<=o.payout_cents AND (${detail('liveConsent')} IS NULL OR ${detail('liveConsent')} IN ('false','0') OR wp.accepts_video=1) AND NOT EXISTS(SELECT 1 FROM ${wantedExtra} wanted WHERE CAST(wanted.value AS INTEGER)>0 AND NOT (${workerExtra})) AND EXISTS(SELECT 1 FROM worker_availability wa WHERE wa.worker_id=m.id AND wa.work_date=${detail('date')} AND wa.start_min<=CAST(substr(${detail('time')},1,2) AS INTEGER)*60+CAST(substr(${detail('time')},4,2) AS INTEGER) AND wa.end_min>=CAST(substr(${detail('time')},1,2) AS INTEGER)*60+CAST(substr(${detail('time')},4,2) AS INTEGER)+CAST(${orderHours} AS REAL)*60) AND (COALESCE(${preference('gender')},'any')='any' OR EXISTS(SELECT 1 FROM cleaner_cards cc WHERE cc.member_id=m.id AND cc.gender=${preference('gender')})) AND (${preference('fragranceFree')} IS NULL OR ${preference('fragranceFree')} IN ('false','0') OR EXISTS(SELECT 1 FROM cleaner_cards cc WHERE cc.member_id=m.id AND cc.fragrance_free=true)) AND (${preference('pets')} IS NULL OR ${preference('pets')} IN ('false','0') OR EXISTS(SELECT 1 FROM cleaner_cards cc WHERE cc.member_id=m.id AND cc.pet_friendly=true)) AND (${preference('ownProducts')} IS NULL OR ${preference('ownProducts')} IN ('false','0') OR EXISTS(SELECT 1 FROM cleaner_cards cc WHERE cc.member_id=m.id AND cc.own_products=true)) AND ((wp.contractor_type='npd' AND wp.npd_status=1 AND wp.npd_checked_on=?) OR (wp.contractor_type='ip' AND wp.ip_status=1 AND wp.ip_checked_on=?)))
- AND NOT EXISTS (SELECT 1 FROM order_skips skipped WHERE skipped.order_id=o.id AND skipped.worker_id=m.id AND skipped.snoozed_until>?)
-`;
+const eligibilityWhere=offerEligibilityWhere(isPostgresRuntime,launchCityId);
 export async function eligible(o:any,id:string,tx:Tx=read,at=Date.now()){
  if(o.marketplaceVersion!==1||o.status!=='offered')return false;
  return !!await tx.one(`SELECT 1 FROM orders o JOIN members m ON m.id=? WHERE o.id=? AND ${eligibilityWhere}`,id,o.id,at,npdToday(),npdToday(),at);
