@@ -10,7 +10,7 @@ export async function GET(req:Request){try{
   const contacts=u.role==='admin'&&url.searchParams.get('directory')==='1'
    ?await all("SELECT id,name,role,active FROM members WHERE role IN ('client','cleaner','leader') AND id<>? ORDER BY CASE WHEN role='cleaner' THEN 0 WHEN role='leader' THEN 1 ELSE 2 END,name",u.id)
    :u.role==='admin'
-    ?await all("SELECT id,name,role,active FROM members WHERE role IN ('admin','cleaner','leader') AND id<>? ORDER BY CASE WHEN role='admin' THEN 0 ELSE 1 END,name",u.id)
+    ?await all("SELECT id,name,role,active FROM members WHERE role='admin' AND active=1 AND id<>? ORDER BY name",u.id)
    :await all("SELECT id,name,role,active FROM members WHERE role='admin' AND active=1 ORDER BY name");
   return json({contacts});
  }

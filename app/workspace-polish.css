@@ -37,3 +37,49 @@ html,body,.workspace,.public-app{overscroll-behavior-x:none}
 }
 @media(prefers-reduced-motion:reduce){.sidebar,.sidebar.open,.workspace-header>.mobile-toggle,.workspace-header .workspace-back-btn,.sidebar .side-link{transition:none}.workspace-backdrop{animation:none}}
 @media(max-width:360px){.workspace-header>span>.workspace-brand-label,.workspace-header>span>svg{display:none}}
+.unified-messenger-avatar.admin-kitten-avatar{background:#edf2e7 url('/media/cleaning-kitten-support-v2.webp') left center/400% 133% no-repeat;color:transparent}
+@media(max-width:760px){
+ .workspace-header .workspace-back-btn,.workspace-header>.mobile-toggle{width:44px;height:44px;flex-basis:44px;border-radius:13px}
+ .workspace .workspace-header{height:104px!important;min-height:104px;padding:8px 14px 8px 66px!important;gap:8px!important}
+ .workspace-header>.mobile-toggle{position:absolute;left:12px;top:7px}
+ .workspace-header .workspace-back-btn{position:absolute;left:12px;bottom:7px}
+ .workspace .workspace-main{min-width:0;padding:120px 14px 112px!important}
+ .workspace .sidebar{inset:104px auto 0 0!important;height:calc(100dvh - 104px)!important}
+ .workspace .workspace-backdrop{inset:104px 0 0!important;height:calc(100dvh - 104px)!important}
+ .workspace .workspace-header>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .operations-portal,.care-social-profile,.care-social-card,.op-panel{min-width:0;max-width:100%}
+ .care-social-profile .op-section-head{flex-wrap:wrap;align-items:flex-start}
+ .care-social-profile .op-section-head>div{min-width:0;flex:1 1 180px}
+ .care-social-profile .op-section-head>.op-tag{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+ .operations-portal .op-notice{flex-wrap:wrap}
+ .operations-portal .op-notice>span{min-width:0;flex:1 1 180px}
+ .operations-portal .op-notice>.btn,.operations-portal .op-notice>.text-btn{flex:1 0 100%;justify-content:center;max-width:100%;white-space:normal}
+ .modal-backdrop{padding:12px}
+ .modal.auth-modal{width:min(100%,440px);max-height:calc(100dvh - 24px);padding:24px 20px;border-radius:20px;overscroll-behavior:contain}
+ .auth-modal form{grid-template-columns:minmax(0,1fr);min-width:0}
+ .auth-modal .field,.auth-modal .field input{min-width:0;max-width:100%}
+ .auth-modal .btn.full{min-width:0;max-width:100%;white-space:normal;text-align:center;overflow-wrap:anywhere}
+ input:not([type='checkbox']):not([type='radio']),textarea,select{font-size:16px!important}
+ input[type='file']{max-width:100%}
+ .workspace,.public-app{overflow-x:clip}
+}
+.upload-field-error{display:block;margin-top:8px;color:#a13b31!important;font-size:13px!important;line-height:1.5!important;overflow-wrap:anywhere}
+.modal-backdrop{z-index:200!important}
+.op-upload-error{padding:12px 15px;border:1px solid #ecc5bc;border-radius:12px;background:#fff7f4;margin:0 0 18px}
+.auth-file-picker{position:relative;display:flex;align-items:center;gap:10px;min-width:0;max-width:100%;padding:7px;border:1px solid #dce1d4;border-radius:11px;background:#fafbf7}
+.auth-file-picker:focus-within{outline:2px solid #a8c674;outline-offset:2px}
+.auth-file-picker input[type='file']{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0}
+.auth-file-picker .btn{flex:0 0 auto;min-height:38px;padding:9px 13px;font-size:12px}
+.auth-file-picker>small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#66705e}
+/* One centered row keeps the cabinet header steady on narrow phones. */
+@media(max-width:760px){
+ .workspace .workspace-header{height:68px!important;min-height:68px!important;padding:0 12px!important;gap:8px!important;align-items:center!important}
+ .workspace-header>.mobile-toggle,.workspace-header .workspace-back-btn{position:static!important;top:auto;bottom:auto;left:auto;width:42px;height:42px;flex:0 0 42px}
+ .workspace .workspace-header>span{display:flex;align-items:center;flex:1 1 auto;min-width:0;margin:0!important;font-size:12px;line-height:1.2}
+ .workspace .workspace-header>span>.workspace-brand-label,.workspace .workspace-header>span>svg{display:none}
+ .workspace .workspace-header>.header-actions{display:flex;align-items:center;gap:6px;margin:0!important}
+ .workspace .workspace-header .workspace-messenger-trigger,.workspace .workspace-header .bell{width:38px;height:38px;flex:0 0 38px}
+ .workspace .workspace-main{padding-top:84px!important}
+ .workspace .sidebar{inset:68px auto 0 0!important;height:calc(100dvh - 68px)!important}
+ .workspace .workspace-backdrop{inset:68px 0 0!important;height:calc(100dvh - 68px)!important}
+}

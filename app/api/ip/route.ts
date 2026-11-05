@@ -1,6 +1,6 @@
 import { readJsonBody } from '../../../lib/request-body';
 import { z } from 'zod';
-import { currentUser, event, fail, guardOrigin, HttpError, json, now, one, requireAdmin, run } from '../../../lib/server';
+import { currentUser, event, fail, guardOrigin, HttpError, json, now, notify, one, requireAdmin, run } from '../../../lib/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,6 +42,7 @@ export async function POST(req: Request) {
     const checkedOn = today();
     const saved = await run("UPDATE worker_profiles SET ip_status=?,ip_checked_at=?,ip_checked_on=?,ip_egrip_reference=?,updated=? WHERE member_id=? AND contractor_type='ip' AND ip_inn=? AND ip_ogrnip=?", body.active ? 1 : 0, checkedAt, checkedOn, body.egripReference, checkedAt, body.workerId, profile.ip_inn, profile.ip_ogrnip);
     if (!saved.meta.changes) throw new HttpError(409, 'Реквизиты изменились во время проверки');
+    await notify([body.workerId],null,body.active?'Статус ИП подтверждён сегодня. Проверьте, что профиль допущен, а график и услуги заполнены.':'Статус ИП не подтверждён. Проверьте реквизиты и обратитесь к администратору.');
     await event(null, user.id, `Администратор проверил ИП ${profile.name} по ИНН ${profile.ip_inn} в ЕГРИП: ${body.active ? 'действует' : 'не действует'}; основание: ${body.egripReference}`);
     return json({ ok: true, result: { status: body.active, checkedAt, checkedOn, message: body.active ? 'Статус ИП подтверждён по выписке ЕГРИП' : 'Статус ИП не подтверждён' } });
   } catch (error) { return fail(error); }

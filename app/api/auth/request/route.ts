@@ -8,18 +8,23 @@ import { hashAuthValue } from "../../../../lib/email-auth";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const inputSchema = z.object({ email: z.string().trim().email().max(254) });
+const inputSchema = z.object({ email: z.string().trim().email().max(254), intent: z.enum(['login','register']).default('login') });
 
 export async function POST(req: Request) {
   try {
     guardOrigin(req);
-    const { email } = inputSchema.parse(await readJsonBody(req));
+    const { email, intent } = inputSchema.parse(await readJsonBody(req));
     const normalizedEmail = email.toLowerCase();
     const secret = (env as any).AUTH_SECRET;
     if (!secret) throw new HttpError(503, "Вход по email ещё не настроен на сервере");
 
     const db = env.DB;
     if (!db) throw new HttpError(503, "База данных пока недоступна");
+    const existing = await db.prepare('SELECT id FROM members WHERE email=?').bind(normalizedEmail).first<any>();
+    const invited = await db.prepare('SELECT email FROM invitations WHERE email=?').bind(normalizedEmail).first<any>();
+    const admin = String((env as any).ADMIN_EMAILS || '').toLowerCase().split(',').map((value:string)=>value.trim()).includes(normalizedEmail);
+    if(intent==='register' && existing) throw new HttpError(409,'Этот email уже зарегистрирован. Войдите в аккаунт.');
+    if(intent==='login' && !existing && !invited && !admin) throw new HttpError(404,'Аккаунт с таким email не найден. Зарегистрируйтесь.');
     const now = Date.now();
     const previous = await db.prepare("SELECT requested_at FROM auth_codes WHERE email=?")
       .bind(normalizedEmail).first<any>();
@@ -56,8 +61,8 @@ export async function POST(req: Request) {
       await transporter.sendMail({
         from: (env as any).AUTH_FROM || smtpUser,
         to: normalizedEmail,
-        subject: "Код входа — Black to White",
-        text: `Ваш код входа: ${code}. Он действует 10 минут. Если вы не запрашивали код, проигнорируйте письмо.`,
+        subject: "Код подтверждения Black to White",
+        text: `Код подтверждения: ${code}. Он действует 10 минут. Если вы не запрашивали код, проигнорируйте письмо.`,
       });
     } catch (error) {
       await db.prepare("DELETE FROM auth_codes WHERE email=? AND requested_at=?").bind(normalizedEmail, now).run();

@@ -1,5 +1,6 @@
 /* One visual language: dark-to-light mark, quiet surfaces, deliberate lime accents. */
 @font-face{font-family:'Inter';src:url('/fonts/InterVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:'Manrope';src:url('/fonts/Manrope-variable.ttf') format('truetype');font-weight:200 800;font-style:normal;font-display:swap}
 @font-face{font-family:'Caveat';src:url('/fonts/Caveat-cyrillic.woff2') format('woff2');font-weight:400 700;font-style:normal;font-display:swap;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Caveat';src:url('/fonts/Caveat-latin.woff2') format('woff2');font-weight:400 700;font-style:normal;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 :root{--font-display:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;--font-body:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;--story-ink:#24382e;--story-muted:#58695d;--story-line:#d9e1d4;--story-radius:28px}
@@ -9,7 +10,61 @@ body{font-family:var(--font-body);font-synthesis:none;-webkit-font-smoothing:ant
 .bw-marketing h3{font-weight:620;letter-spacing:-.025em;text-wrap:balance}
 .bw-marketing .bw-hero h1{font-size:clamp(39px,4.2vw,64px);line-height:1.08;letter-spacing:-.045em;max-width:650px}
 .bw-marketing .bw-hero-careline{display:block;max-width:560px;margin-top:20px;color:#6b8059;font-size:clamp(24px,2.45vw,35px);font-weight:720;line-height:1.2;letter-spacing:-.025em}
-.bw-marketing .bw-hero-benefit strong{display:inline-block;color:#526942;background:none;font-family:'Caveat',cursive;font-size:clamp(37px,3.35vw,50px);font-weight:700;line-height:.8;letter-spacing:0;transform:rotate(-2deg);vertical-align:-.08em}
+.bw-marketing .bw-hero-benefit{padding:0;background:none;white-space:nowrap}
+.bw-marketing .bw-hero-benefit-prefix{display:inline-block;padding:.15em .02em .12em;background:#e2f0a6}
+.bw-marketing .bw-hero-benefit strong{display:inline-block;color:#526942;background:#e2f0a6;padding:.08em .12em .17em;font-family:'Caveat',cursive;font-size:clamp(37px,3.35vw,50px);font-weight:700;line-height:.8;letter-spacing:0;transform:rotate(-2deg);vertical-align:-.08em}
+@media(max-width:600px){.bw-marketing .bw-hero-careline{max-width:300px}}
+@media(max-width:360px){.bw-marketing .bw-hero-benefit{white-space:normal}.bw-marketing .bw-hero-benefit strong{display:table;margin-top:5px}}
+
+/* Booking: one focused column and one clear action per stage. */
+.bw-booking-flow{min-height:calc(100dvh - 80px);padding:36px 22px 90px;background:#f9faf6}
+.bw-booking-shell{width:min(100%,820px);margin:0 auto}
+.bw-booking-back{min-height:42px;color:#56694a}
+.bw-booking-heading{margin:18px 0 24px}.bw-booking-heading h1{font-size:clamp(32px,4vw,50px);letter-spacing:-.055em;margin-top:6px}
+.bw-booking-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:22px}
+.bw-booking-progress>span{display:flex;align-items:center;gap:9px;min-width:0;padding:10px 12px;border:1px solid #dce5cf;border-radius:13px;color:#75806f;font-size:12px;line-height:1.25;background:#f0f3e9}
+.bw-booking-progress>span.current{background:#e5f2a5;border-color:#cada81;color:#26362b;font-weight:700}.bw-booking-progress>span.complete{color:#436039}
+.bw-booking-progress b{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;background:#fff;font-size:12px}
+.bw-booking-flow .booking-panel{padding:clamp(20px,3vw,36px);border-radius:22px;background:#fff;border:1px solid #e0e7d5;box-shadow:0 16px 48px #28372809}
+.bw-booking-flow .booking-panel h2{font-size:clamp(21px,2.4vw,28px);font-weight:700;margin:26px 0 8px}
+.bw-booking-flow .booking-panel h2:first-child{margin-top:0}
+.bw-booking-flow .bw-booking-selection{margin:0;flex-wrap:wrap;gap:12px}
+.bw-booking-flow .bw-booking-selection b{margin-left:auto;font-size:19px}
+.bw-booking-flow .bw-booking-change{padding:12px 3px;margin-bottom:6px;color:#425f3b;font-size:14px}
+.bw-booking-flow .bw-order-scope{margin:18px 0 4px}
+.bw-booking-flow .bw-order-scope ul{max-height:210px;overflow-y:auto;overscroll-behavior:contain;padding-right:10px;scrollbar-color:#a3b87b #e8eee0;scrollbar-width:thin}
+.bw-booking-flow .bw-order-scope li{padding:9px 11px;background:#fff;border:1px solid #dce6d1;border-radius:10px}
+.bw-booking-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
+.bw-booking-flow .field{display:flex;flex-direction:column;gap:8px;min-width:0;margin:15px 0;font-weight:600}
+.bw-booking-flow .field input,.bw-booking-flow .field select,.bw-booking-flow .field textarea{width:100%;font-size:16px;font-weight:400}
+.bw-booking-flow .field input[readonly]{background:#edf3e4;color:#3c5b39}
+.bw-booking-flow .bw-booking-fields .field{margin:0}
+.bw-booking-flow .care-preferences{margin:18px 0;border-radius:16px}
+.bw-booking-support{font-size:14px}
+.bw-booking-flow .bw-booking-options{margin:16px 0 28px}
+.bw-booking-flow .bw-booking-next{margin-top:28px;min-height:58px;font-size:16px;font-weight:750;border-radius:14px}
+.bw-booking-soft-prompt{margin:20px 0;padding:18px;border-radius:15px;background:#edf5db;border:1px solid #cee19f}
+.bw-booking-soft-prompt strong{font-size:16px}.bw-booking-soft-prompt p{margin:5px 0 16px;font-size:14px;line-height:1.5}.bw-booking-soft-prompt>div{display:flex;gap:10px;flex-wrap:wrap}
+.bw-booking-receipt{display:grid;gap:0;margin:12px 0 22px;border-top:1px solid #e3e9db}
+.bw-booking-receipt>div{display:flex;justify-content:space-between;gap:20px;padding:15px 0;border-bottom:1px solid #e3e9db;font-size:15px}
+.bw-booking-receipt span{color:#667463;flex:none}.bw-booking-receipt strong{text-align:right;overflow-wrap:anywhere;max-width:65%}
+.bw-booking-total{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:20px;border-radius:15px;background:#eaf3cf;margin:24px 0 12px}
+.bw-booking-total strong{font-size:clamp(23px,3vw,34px);white-space:nowrap}
+.bw-booking-test-note,.bw-booking-legal{font-size:13px;line-height:1.5;margin:12px 0;color:#5f6e58}
+@media(max-width:600px){.bw-booking-flow{padding:20px 16px 88px}.bw-booking-progress{gap:5px}.bw-booking-progress>span{padding:8px 5px;display:grid;justify-items:center;text-align:center;font-size:10px}.bw-booking-progress b{width:22px;height:22px}.bw-booking-fields{grid-template-columns:1fr;gap:14px}.bw-booking-flow .bw-booking-selection b{font-size:17px}.bw-booking-receipt>div{display:block}.bw-booking-receipt strong{display:block;max-width:none;text-align:left;margin-top:5px}.bw-booking-total{align-items:flex-start;flex-direction:column}.bw-booking-flow .booking-panel{padding:20px 16px}}
+.bw-booking-soft-prompt>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}.bw-booking-soft-prompt .btn{padding:11px 8px;white-space:normal;font-size:13px}
+.bw-booking-flow .bw-booking-wishes-title{max-width:100%;line-height:1.2;text-wrap:balance;overflow-wrap:break-word}.bw-booking-flow .care-preferences{min-width:0;margin-top:12px}
+.bw-booking-dirt[open] .bw-booking-dirt-options{position:static;box-shadow:none}
+.op-clarify-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}.op-clarify-form .field{min-width:0}.op-clarify-form input{width:100%;font-size:16px}.op-clarify-form .field:nth-child(3),.op-clarify-form .btn{grid-column:1/-1}.op-clarify-form .btn{white-space:normal}
+@media(max-width:600px){.op-clarify-form{grid-template-columns:1fr}}
+
+.bw-booking-stage-copy{display:grid;gap:3px;min-width:0;font-size:12px}.bw-booking-stage-copy small{font-size:9px;font-weight:800;letter-spacing:.12em;color:#6b8059}.bw-booking-progress .current .bw-booking-stage-copy small{color:#43562f}
+.bw-booking-area{display:flex;align-items:center;gap:8px;width:100%;min-height:56px;padding:5px 7px;border:1px solid #d7e0cf;border-radius:13px;background:#f7f9f2}.bw-booking-area:focus-within{border-color:#829b65;box-shadow:0 0 0 3px #dfef8a55}.bw-booking-area button{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:10px;background:#e8efdb;color:#385a3e}.bw-booking-area button:hover{background:#dae9be}.bw-booking-flow .bw-booking-area input{flex:1;min-width:0;width:100%;padding:6px 0;border:0;box-shadow:none;background:transparent;text-align:center;font-size:19px;font-weight:700;appearance:textfield}.bw-booking-area input::-webkit-inner-spin-button,.bw-booking-area input::-webkit-outer-spin-button{appearance:none;margin:0}.bw-booking-area>span{font-size:13px;color:#607456}
+.bw-booking-dirt{position:relative;min-width:0}.bw-booking-dirt>summary{display:flex;align-items:center;justify-content:space-between;min-height:56px;padding:12px 15px;border:1px solid #d7e0cf;border-radius:13px;background:#f7f9f2;list-style:none;font-size:16px;font-weight:600;cursor:pointer}.bw-booking-dirt>summary::-webkit-details-marker{display:none}.bw-booking-dirt[open]>summary{border-color:#829b65;border-radius:13px 13px 0 0}.bw-booking-dirt[open]>summary svg{transform:rotate(180deg)}.bw-booking-dirt-options{position:absolute;top:calc(100% - 1px);left:0;right:0;z-index:5;padding:6px;border:1px solid #829b65;border-radius:0 0 13px 13px;background:#fff;box-shadow:0 12px 25px #24402a18}.bw-booking-dirt-options button{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px;border-radius:9px;text-align:left;font-size:15px}.bw-booking-dirt-options button:hover,.bw-booking-dirt-options button.selected{background:#eaf2d5;color:#304b34}
+.bw-booking-flow .bw-booking-extras{margin:25px 0 24px;border:1px solid #d9e4ce;border-radius:15px;background:#f4f8ec;overflow:hidden}.bw-booking-flow .bw-booking-extras>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px;list-style:none;cursor:pointer}.bw-booking-extras>summary::-webkit-details-marker{display:none}.bw-booking-extras>summary>span{display:grid;gap:3px}.bw-booking-extras>summary strong{font-size:19px;line-height:1.2}.bw-booking-extras>summary small{font-size:12px;color:#617553}.bw-booking-extras[open]>summary>svg{transform:rotate(45deg)}.bw-booking-extras .extras-list{margin:0 14px 14px;padding-top:7px;border-top:1px solid #d7e1c9}
+.bw-booking-flow .bw-order-scope li,.bw-detail-copy .bw-scope>ul>li{font-family:var(--font-body);font-size:15px;font-weight:550;line-height:1.45;letter-spacing:-.015em;color:#2d4435}.bw-detail-copy .bw-scope>ul>li{min-height:64px}
+@media(max-width:600px){.bw-booking-progress>span{padding:9px 5px}.bw-booking-stage-copy{font-size:10px;line-height:1.25}.bw-booking-stage-copy small{font-size:8px}.bw-booking-flow .bw-order-scope li,.bw-detail-copy .bw-scope>ul>li{font-size:14.5px}}
+.bw-marketing .bw-hero h1{font-family:'Manrope',var(--font-display);font-weight:690;letter-spacing:-.052em}.bw-marketing .bw-hero-careline{font-family:'Manrope',var(--font-display);font-weight:650;letter-spacing:-.035em}
 .public-header .bw-header-calc{font-weight:800}
 .bw-marketing .bw-price strong,.bw-marketing .bw-detail-price>strong,.bw-marketing .bw-extra-bottom strong,.bw-marketing .bw-service-cards>button>strong,.bw-marketing .bw-extras-summary button,.public-app .quote-total strong,.public-app .offer-price strong,.public-app .big-price,.public-app .order-price,.public-app .bw-booking-selection>b,.public-app .booking .service-options small,.public-app .booking .extra b,.public-app .booking .quote-lines b{font-weight:800}
 .bw-marketing p{font-weight:400}
@@ -109,7 +164,7 @@ body{font-family:var(--font-body);font-synthesis:none;-webkit-font-smoothing:ant
 .public-app footer#contacts .legal-links>strong{font-size:10px;letter-spacing:.14em;color:#d9e4d1}
 .public-app footer#contacts .legal-grid{gap:12px 24px;margin-top:18px}
 .public-app footer#contacts .legal-grid button{font-size:12px;line-height:1.55;color:#b7c5b0;padding:3px 0;text-align:left}
-.public-app footer#contacts button:hover{color:#e7f4bb}
+.public-app footer#contacts button:hover,.public-app footer#contacts a:hover{color:#e7f4bb}
 .public-app footer#contacts .footer-operator{font-size:10px;color:#a1af99;margin-top:0}
 .care-guide{font-family:var(--font-body)}
 .bw-empty-quote,.op-hero h2 em,.op-mode-switcher strong,.op-lesson-copy strong,.op-lesson-banner h2,.op-lesson-body>section>span,.care-guide em,.cg-floating strong,.cg-surface-photo h3,.cg-quiz h3{font-family:var(--font-display)}

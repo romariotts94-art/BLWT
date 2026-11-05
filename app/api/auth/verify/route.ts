@@ -12,12 +12,13 @@ const inputSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
   role: z.enum(["client", "cleaner"]).optional(),
   intent: z.enum(["login", "register"]).default("login"),
+  remember: z.boolean().default(true),
 });
 
 export async function POST(req: Request) {
   try {
     guardOrigin(req);
-    const { email, code, role: requestedRole = "client", intent } = inputSchema.parse(await readJsonBody(req));
+    const { email, code, role: requestedRole = "client", intent, remember } = inputSchema.parse(await readJsonBody(req));
     const normalizedEmail = email.toLowerCase();
     const secret = (env as any).AUTH_SECRET;
     if (!secret) throw new HttpError(503, "Вход по email ещё не настроен на сервере");
@@ -64,9 +65,10 @@ export async function POST(req: Request) {
       await env.DB?.prepare("UPDATE members SET role='admin' WHERE id=?").bind(member.id).run();
       member.role = "admin";
     }
-    const session = await createSession(member.id);
+    const sessionAge = (remember ? 30 : 1) * 86400;
+    const session = await createSession(member.id,sessionAge);
     return new Response(JSON.stringify({ ok: true, user: { id: member.id, name: member.name, role: member.role } }), {
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": await sessionCookie(session.token) },
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": await sessionCookie(session.token,sessionAge) },
     });
   } catch (error) {
     return fail(error);

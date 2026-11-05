@@ -26,7 +26,8 @@ export async function GET(req:Request){try{
    ids.push(...administrators.map(person=>person.id));
   }
   const unique=[...new Set(ids.filter(Boolean))],people=unique.length?await all(`SELECT m.id,m.name,m.role,COALESCE(c.display_name,m.name) AS display_name FROM members m LEFT JOIN cleaner_cards c ON c.member_id=m.id WHERE m.id IN (${unique.map(()=>'?').join(',')})`,...unique):[];
-  return json({contacts:people.map((person:any)=>({id:person.id,name:u.role==='admin'&&person.id===order.clientId?order.name:u.role!=='admin'&&u.role!=='client'&&person.id===order.clientId?'Заказчик':person.display_name,role:person.role}))});
+  const triage=u.role==='admin'?await all('SELECT participant_id,status FROM order_dialog_triage WHERE order_id=?',orderId):[];
+  return json({contacts:people.map((person:any)=>({id:person.id,name:u.role==='admin'&&person.id===order.clientId?order.name:u.role!=='admin'&&u.role!=='client'&&person.id===order.clientId?'Заказчик':person.display_name,role:person.role,dialogStatus:triage.find((item:any)=>item.participant_id===person.id)?.status||'open'}))});
  }
  const thread=await resolveThread(orderId,u,url.searchParams.get('contactId')||url.searchParams.get('participantId')||undefined);
  if(u.role==='admin'&&url.searchParams.get('auditView')==='1')await run('INSERT INTO audit(id,order_id,actor,action,created) VALUES(?,?,?,?,?)',uid(),orderId,u.id,'Администратор открыл переписку участников заказа',now());
@@ -42,7 +43,18 @@ export async function GET(req:Request){try{
    FROM messages m JOIN members p ON p.id=m.user_id WHERE m.order_id=? ORDER BY m.created DESC,m.id DESC LIMIT 500`,orderId);
  const safeGroup=group.map((message:any)=>({...message,name:u.role==='admin'?message.name:message.sender_id===u.id?'Вы':u.role==='client'?message.sender_role==='admin'?'Поддержка Black to White':'Исполнитель':message.sender_role==='admin'?'Поддержка Black to White':'Заказчик'}));
  const messages=[...new Map([...safeGroup,...pair].map(message=>[message.id,message])).values()].sort((a:any,b:any)=>String(a.created).localeCompare(String(b.created))).slice(-500);
- return json({messages,contactId:thread.contactId});
+ const triage=u.role==='admin'?await one('SELECT status FROM order_dialog_triage WHERE order_id=? AND participant_id=?',orderId,thread.contactId):null;
+ return json({messages,contactId:thread.contactId,dialogStatus:triage?.status||'open'});
+}catch(e){return fail(e)}}
+
+export async function PATCH(req:Request){try{
+ guardOrigin(req);const u=await currentUser();requireAdmin(u);
+ const body=z.object({orderId:z.string().uuid(),participantId:z.string().uuid(),status:z.enum(['open','deferred','resolved'])}).parse(await readJsonBody(req));
+ const order=await orderAccess(body.orderId,u);
+ if(![order.clientId,...order.crew].includes(body.participantId))throw new HttpError(403,'Этот участник не относится к заказу');
+ await run(`INSERT INTO order_dialog_triage(order_id,participant_id,status,updated_by,updated_at) VALUES(?,?,?,?,?)
+  ON CONFLICT(order_id,participant_id) DO UPDATE SET status=excluded.status,updated_by=excluded.updated_by,updated_at=excluded.updated_at`,body.orderId,body.participantId,body.status,u.id,now());
+ return json({ok:true,status:body.status});
 }catch(e){return fail(e)}}
 
 export async function POST(req:Request){try{

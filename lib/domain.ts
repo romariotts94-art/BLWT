@@ -183,7 +183,7 @@ export function isWithinUrgentWindow(date:string,time:string,offset='+03:00',now
  const target=Date.parse(`${date}T${time}:00${offset}`),remaining=target-now;
  return Number.isFinite(target)&&remaining>=0&&remaining<86400000;
 }
-export const bookingSchema=quoteSchema.extend({preferences:preferencesSchema,name:z.string().trim().min(2).max(100),phone:z.string().regex(/^\+?[\d\s()\-]{10,22}$/,'Укажите корректный телефон'),address:z.string().trim().min(8).max(400),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>Number.isFinite(Date.parse(v+'T12:00:00Z'))&&new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v,'Укажите существующую дату'),time:z.string().regex(/^(0[8-9]|1\d|20):[03]0$/),notes:z.string().max(2000),liveConsent:z.boolean(),terms:z.literal(true)});
+export const bookingSchema=quoteSchema.extend({preferences:preferencesSchema,name:z.string().trim().max(100),phone:z.string().trim().max(22),address:z.string().trim().max(400),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>Number.isFinite(Date.parse(v+'T12:00:00Z'))&&new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v,'Укажите существующую дату'),time:z.string().regex(/^(0[8-9]|1\d|20):[03]0$/),notes:z.string().max(2000),liveConsent:z.boolean(),terms:z.literal(true)});
 export const checklist=['Полы и плинтусы','Пыль и поверхности','Кухня и рабочие зоны','Санузлы и сантехника','Зеркала и стекло','Мусор и финальная проверка'];
 export const money=(n:number)=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:0}).format(n);
 export function publicQuote(q:any){const {payroll,transport,video,supplies,overhead,taxReserve,cost,contribution,margin,...rest}=q;return rest;}

@@ -85,6 +85,15 @@
 .incoming-offer-reward{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:20px 0;padding:16px 0;border-top:1px solid #e5e9e1;border-bottom:1px solid #e5e9e1}.incoming-offer-reward small{font-size:9px;letter-spacing:1.3px;color:#89977e}.incoming-offer-reward b{font-size:22px;font-weight:600;color:#405b34}
 .incoming-offer-open{width:100%;min-height:56px;justify-content:center;font-size:15px;font-weight:650;box-shadow:0 7px 25px #687e4838}
 .incoming-offer-later{display:block;margin:13px auto 0;padding:8px;border:0;background:transparent;color:#73806f;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.notifications .notification{cursor:default;font-size:13px;line-height:1.55}
+.notifications .notification small{font-size:11px}
+.notification-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.notification-actions button{padding:7px 10px;border:1px solid #d4dfc9;border-radius:9px;background:#f5f8ef;color:#304a32;font-size:12px;font-weight:650}
+.notification-actions button:hover{background:#e8f0dc}
+.unified-messenger-triage{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:10px 16px;border-bottom:1px solid #e3e9dc;font-size:12px}
+.unified-messenger-triage>span{font-weight:700;margin-right:3px}
+.unified-messenger-triage button{padding:7px 10px;border:1px solid #d7e1cf;border-radius:999px;background:#fff;color:#3e513a}
+.unified-messenger-triage button.active{background:#dfeeaa;border-color:#a7c67b;color:#27382b;font-weight:700}
 @keyframes offer-backdrop-in{from{opacity:0}to{opacity:1}}
 @media(max-width:520px){.incoming-offer-backdrop{padding:12px}.incoming-offer-dialog{padding:24px 19px;border-radius:20px}.incoming-offer-photos img{height:110px}.incoming-offer-reward b{font-size:19px}}
 @media(prefers-reduced-motion:reduce){.incoming-offer-backdrop{animation:none}}
