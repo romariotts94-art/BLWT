@@ -4,6 +4,7 @@ import nodemailer from "nodemailer";
 import { z } from "zod";
 import { guardOrigin, HttpError, fail } from "../../../../lib/server";
 import { hashAuthValue } from "../../../../lib/email-auth";
+import { resolveAuthIntent } from "../../../../lib/auth-flow-policy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,8 +24,12 @@ export async function POST(req: Request) {
     const existing = await db.prepare('SELECT id FROM members WHERE email=?').bind(normalizedEmail).first<any>();
     const invited = await db.prepare('SELECT email FROM invitations WHERE email=?').bind(normalizedEmail).first<any>();
     const admin = String((env as any).ADMIN_EMAILS || '').toLowerCase().split(',').map((value:string)=>value.trim()).includes(normalizedEmail);
-    if(intent==='register' && existing) throw new HttpError(409,'Этот email уже зарегистрирован. Войдите в аккаунт.');
-    if(intent==='login' && !existing && !invited && !admin) throw new HttpError(404,'Аккаунт с таким email не найден. Зарегистрируйтесь.');
+    // A registration attempt for an existing address should continue as sign-in
+    // immediately. Requiring a second submit caused the first attempt to look
+    // like a failed email delivery and left the form in a confusing state.
+    const decision=resolveAuthIntent({intent,hasMember:!!existing,hasInvite:!!invited,isAdmin:admin});
+    if(decision.error)throw new HttpError(decision.error.status,decision.error.message);
+    const resolvedIntent = decision.intent;
     const now = Date.now();
     const previous = await db.prepare("SELECT requested_at FROM auth_codes WHERE email=?")
       .bind(normalizedEmail).first<any>();
@@ -58,19 +63,31 @@ export async function POST(req: Request) {
         ignoreTLS: smtpPort === 25 && !smtpUser,
         ...(smtpUser && smtpPassword ? { auth: { user: smtpUser, pass: smtpPassword } } : {}),
       });
-      await transporter.sendMail({
+      const message = {
         from: (env as any).AUTH_FROM || smtpUser,
         to: normalizedEmail,
         subject: "Код подтверждения Black to White",
         text: `Код подтверждения: ${code}. Он действует 10 минут. Если вы не запрашивали код, проигнорируйте письмо.`,
-      });
+      };
+      try {
+        await transporter.sendMail(message);
+      } catch (error:any) {
+        // Postfix may accept a TCP connection before its greeting is ready.
+        // Retry only before SMTP has accepted the message, avoiding duplicates.
+        if (!/Greeting never received/i.test(String(error?.message||''))) throw error;
+        await new Promise(resolve=>setTimeout(resolve,500));
+        await transporter.sendMail(message);
+      }
     } catch (error) {
       await db.prepare("DELETE FROM auth_codes WHERE email=? AND requested_at=?").bind(normalizedEmail, now).run();
       console.error("Could not send sign-in email", error);
       throw new HttpError(503, "Не удалось отправить письмо. Проверьте почту и попробуйте позже.");
     }
 
-    return Response.json({ ok: true, message: "Код отправлен на почту. Он действует 10 минут." }, {
+    const accountAlreadyExists = decision.accountExists && intent === 'register';
+    return Response.json({ ok: true, intent: resolvedIntent, message: accountAlreadyExists
+      ? "Этот email уже зарегистрирован. Отправили код для входа."
+      : "Код отправлен на почту. Он действует 10 минут." }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { guardOrigin, HttpError, json, fail } from "../../../../lib/server";
 import { createSession, hashAuthValue, sessionCookie } from "../../../../lib/email-auth";
+import { resolveAuthIntent } from "../../../../lib/auth-flow-policy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,17 +40,20 @@ export async function POST(req: Request) {
       throw new HttpError(400, "Код не подошёл. Проверьте письмо и попробуйте ещё раз.");
     }
 
+    const invite = await env.DB?.prepare("SELECT * FROM invitations WHERE email=?").bind(normalizedEmail).first<any>();
+    const adminEmails = String((env as any).ADMIN_EMAILS || "").toLowerCase().split(",").map((value: string) => value.trim());
+    const admin = adminEmails.includes(normalizedEmail);
+    const existing = await env.DB?.prepare("SELECT * FROM members WHERE email=?").bind(normalizedEmail).first<any>();
+    // If the address became registered after the code was requested, finish as
+    // sign-in. Do not consume a valid code and strand the user on a stale error.
+    const decision=resolveAuthIntent({intent,hasMember:!!existing,hasInvite:!!invite,isAdmin:admin});
+    if(decision.error)throw new HttpError(decision.error.status,decision.error.message);
+
     // Consume exactly this code atomically: concurrent requests cannot replay it
     // or delete a newer code requested while this verification was in flight.
     const consumed = await env.DB?.prepare("DELETE FROM auth_codes WHERE email=? AND code_hash=? AND expires_at>? AND attempts<5")
       .bind(normalizedEmail, expected, Date.now()).run();
     if (!consumed?.meta.changes) throw new HttpError(400, "Код уже использован или истёк. Запросите новый код.");
-    const invite = await env.DB?.prepare("SELECT * FROM invitations WHERE email=?").bind(normalizedEmail).first<any>();
-    const adminEmails = String((env as any).ADMIN_EMAILS || "").toLowerCase().split(",").map((value: string) => value.trim());
-    const admin = adminEmails.includes(normalizedEmail);
-    const existing = await env.DB?.prepare("SELECT * FROM members WHERE email=?").bind(normalizedEmail).first<any>();
-    if (intent === "register" && existing) throw new HttpError(409, "Этот email уже зарегистрирован. Войдите в аккаунт.");
-    if (intent === "login" && !existing && !invite && !admin) throw new HttpError(404, "Аккаунт с таким email не найден. Зарегистрируйтесь.");
     const fallbackName = normalizedEmail.split("@")[0].replace(/[._-]+/g, " ").trim();
     const id = crypto.randomUUID();
     const member = await env.DB?.prepare(
