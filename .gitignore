@@ -53,6 +53,7 @@ next-env.d.ts
 /.output/
 /data/
 /private-backups/
+/.local/
 *.dump
 # Checkout-local execution profile and tool state; never publish them.
 /.sites-runtime/
