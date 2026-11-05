@@ -38,13 +38,13 @@
 
 /* The same kitten, now listening in glasses with a notebook. */
 .bw-kitten-secretary{background-image:url('/media/cleaning-kitten-support-v2.webp');background-position:0 0;animation:none}
-.bw-kitten-dialog header .bw-kitten-secretary{width:84px;height:112px;animation:bwKittenWrite 1.1s steps(1,end) infinite;animation-play-state:paused}
-.bw-kitten-dialog[open] header .bw-kitten-secretary{animation-play-state:running}
+.bw-kitten-dialog header .bw-kitten-secretary{width:84px;height:112px;animation:bwKittenLook 5s steps(1,end) infinite;background-position:0 0}
 .bw-kitten-dialog header .bw-kitten-secretary.is-writing{animation:bwKittenWrite .65s steps(1,end) infinite}
 .bw-kitten-dialog header>div{min-width:0}.bw-kitten-dialog>header{flex-shrink:0}
-.bw-kitten-activity{display:block;font-size:11px;line-height:1.5;color:#617546;margin-top:9px}
+.bw-kitten-activity{display:block;min-height:3em;font-size:11px;line-height:1.5;color:#617546;margin-top:9px}
 .bw-kitten-log{flex-shrink:1;min-height:60px}.bw-kitten-prompts,.bw-kitten-form,.bw-kitten-manager{flex-shrink:0}
 @keyframes bwKittenWrite{0%,100%{background-position:33.333333% 0}50%{background-position:66.666667% 0}}
+@keyframes bwKittenLook{0%,88%,96%,100%{background-position:0 0}90%,94%{background-position:100% 0}}
 @media(max-width:380px){.bw-kitten-dialog>header{gap:9px;padding:12px}.bw-kitten-dialog header .bw-kitten-secretary{width:66px;height:88px}.bw-kitten-dialog header h2{font-size:20px}.bw-kitten-activity{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.bw-kitten-secretary,.bw-kitten-dialog header .bw-kitten-secretary,.bw-kitten-dialog header .bw-kitten-secretary.is-writing{animation:none;background-position:0 0}}
 

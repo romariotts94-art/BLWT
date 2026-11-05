@@ -26,7 +26,7 @@ export default function PencilVignette({kind}:{kind:'extras'|'academy'}){
  const [visible,setVisible]=useState(false);
  const [sceneState,setSceneState]=useState({index:0,token:0});
  useEffect(()=>{const element=ref.current;if(!element)return;const observer=new IntersectionObserver(([entry])=>setVisible(entry.isIntersecting),{threshold:.1});observer.observe(element);return()=>observer.disconnect()},[]);
- useEffect(()=>{if(!visible||kind!=='extras')return;setSceneState(state=>({index:0,token:state.token+1}));const timer=window.setInterval(()=>setSceneState(state=>({index:(state.index+1)%extrasScenes.length,token:state.token+1})),20000);return()=>window.clearInterval(timer)},[kind,visible]);
+ useEffect(()=>{if(!visible||kind!=='extras')return;setSceneState(state=>({index:0,token:state.token+1}));const timer=window.setInterval(()=>setSceneState(state=>({index:(state.index+1)%extrasScenes.length,token:state.token+1})),9000);return()=>window.clearInterval(timer)},[kind,visible]);
  if(kind==='academy')return <div ref={ref} className={`bw-pencil-vignette bw-pencil-academy${visible?' is-visible':''}`} aria-hidden="true"><svg viewBox="0 0 640 480" role="presentation"><defs><RevealMask id="bw-academy-pencil-mask"/></defs><image href="/media/academy-pencil-cap-book.webp" width="640" height="480" mask="url(#bw-academy-pencil-mask)"/></svg></div>;
  return <div ref={ref} className={`bw-pencil-vignette bw-pencil-extras${visible?' is-visible':''}`} aria-hidden="true"><svg viewBox="0 0 640 480" role="presentation">
   <defs><RevealMask key={sceneState.token} id={`bw-extras-pencil-mask-${sceneState.token}`}/></defs>

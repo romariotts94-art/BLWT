@@ -75,9 +75,14 @@ body{font-family:var(--font-body);font-synthesis:none;-webkit-font-smoothing:ant
 .bw-care-plan-art>img{height:240px;filter:none}
 .bw-manager-guide .bw-manager-condition-guidance{background:#f3f5ec;border-color:var(--story-line);border-radius:20px}
 .bw-manager-guide .bw-manager-condition-guidance>p{font-size:12px;line-height:1.65}
-.bw-description-inner>ul{display:grid;grid-template-columns:1fr;gap:9px;list-style:none;padding:0;margin:18px 0}
-.bw-detail-copy .bw-description-inner>ul>li{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#ffffffbd;border:1px solid #d8e2cc;border-radius:12px;font-size:14px;line-height:1.55;color:#34482f}
-.bw-detail-copy .bw-description-inner>ul>li>svg{flex:none;margin-top:2px;color:#68864a}
+.bw-scope{margin:17px 0}
+.bw-scope-heading{display:flex;justify-content:space-between;align-items:baseline;gap:10px;color:#31452f}
+.bw-scope-heading strong{font-size:13px;font-weight:750}
+.bw-scope-heading span{color:#70845c;font-size:10px;white-space:nowrap}
+.bw-scope>ul{display:grid;grid-template-columns:1fr;align-content:start;gap:7px;height:196px;overflow-y:auto;overscroll-behavior-y:contain;touch-action:pan-y;scroll-snap-type:y proximity;scrollbar-width:thin;scrollbar-color:#8aa672 #edf2e7;list-style:none;padding:1px 6px 1px 0;margin:9px 0 0}
+.bw-scope>ul:focus-visible{outline:2px solid #6e8a58;outline-offset:2px;border-radius:12px}
+.bw-detail-copy .bw-scope>ul>li{display:grid;grid-template-columns:31px minmax(0,1fr);align-items:center;gap:9px;min-height:58px;padding:8px 11px;background:#fff;border:1px solid #d8e2cc;border-radius:12px;color:#34482f;font-size:13px;line-height:1.4;scroll-snap-align:start}
+.bw-scope-number{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#e8efdb;color:#42613b;font-size:10px;font-weight:800;letter-spacing:.04em}
 .bw-marketing .bw-service-cards button.active{background:#eaf0dd;border-color:#81966c;box-shadow:inset 0 3px 0 #82965d}
 .bw-marketing .bw-service-cards>button.is-photo-open{background:#22372c;border-color:#526b4f;color:#fff;box-shadow:0 12px 28px #1d35241b}
 .bw-marketing .bw-service-cards>button.is-photo-open:after{opacity:1}
@@ -85,6 +90,7 @@ body{font-family:var(--font-body);font-synthesis:none;-webkit-font-smoothing:ant
 .bw-marketing .bw-service-cards>button.is-photo-open .bw-service-card-art>svg:not(.bw-service-photo){opacity:0}
 .bw-marketing .bw-service-cards>button.is-photo-open>h3,.bw-marketing .bw-service-cards>button.is-photo-open>p,.bw-marketing .bw-service-cards>button.is-photo-open>strong,.bw-marketing .bw-service-cards>button.is-photo-open .bw-card-number{color:#fff}
 .bw-marketing .bw-service-cards{padding:18px 14px 24px;margin:0 -14px}
+.bw-marketing .bw-service-pills,.bw-marketing .bw-service-cards{overscroll-behavior-x:contain}
 .bw-marketing .bw-service-cards>button:hover,.bw-marketing .bw-service-cards>button:focus-visible{transform:translateY(-3px) scale(1.015);box-shadow:0 12px 26px #24382e26;z-index:3}
 .bw-marketing .bw-service-cards>button.is-photo-open:hover,.bw-marketing .bw-service-cards>button.is-photo-open:focus-visible{box-shadow:0 10px 24px #1d352435}
 .bw-marketing .bw-business{max-width:1560px;width:91%;margin:12px auto 30px;padding:clamp(26px,4vw,64px);border:1px solid #486048;border-radius:var(--story-radius);background:#263c30;gap:36px}
@@ -117,14 +123,14 @@ body{font-family:var(--font-body);font-synthesis:none;-webkit-font-smoothing:ant
 .bw-pencil-academy{flex-basis:235px;width:235px}
 .bw-pencil-vignette:before{content:'';position:absolute;inset:20% 5% 12%;border-radius:50%;background:radial-gradient(ellipse,#dde9d7 0%,#edf3e9 48%,transparent 75%);filter:blur(12px);opacity:.7}
 .bw-pencil-vignette svg{position:relative;display:block;width:100%;height:100%;overflow:visible}
-.bw-pencil-scene{opacity:1;animation:bwPencilLifecycle 20s linear forwards}
+.bw-pencil-scene{opacity:1;animation:bwPencilLifecycle 9s linear forwards}
 .bw-pencil-trace{stroke-dasharray:1;stroke-dashoffset:1;animation:bwPencilDraw 5s linear forwards}
 .bw-pencil-finish{opacity:0;animation:bwPencilFinish 5s linear forwards}
 #bw-academy-pencil-mask .bw-pencil-trace{animation:bwAcademyTrace 20s linear infinite}
 #bw-academy-pencil-mask .bw-pencil-finish{animation:bwAcademyFinish 20s linear infinite}
 .bw-pencil-academy image{animation:bwAcademyFade 20s linear infinite}
 .bw-pencil-vignette:not(.is-visible) .bw-pencil-scene,.bw-pencil-vignette:not(.is-visible) .bw-pencil-trace,.bw-pencil-vignette:not(.is-visible) .bw-pencil-finish,.bw-pencil-academy:not(.is-visible) image{animation-play-state:paused}
-@keyframes bwPencilLifecycle{0%,85%{opacity:1}100%{opacity:0}}
+@keyframes bwPencilLifecycle{0%,88.889%{opacity:1}100%{opacity:0}}
 @keyframes bwPencilDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 @keyframes bwPencilFinish{0%,90%{opacity:0}100%{opacity:1}}
 @keyframes bwAcademyTrace{0%{stroke-dashoffset:1}25%,100%{stroke-dashoffset:0}}
@@ -148,3 +154,17 @@ body{font-family:var(--font-body);font-synthesis:none;-webkit-font-smoothing:ant
  .public-app footer#contacts{border-radius:22px;padding:30px 24px 110px;gap:22px}.public-app footer#contacts .legal-grid{grid-template-columns:1fr 1fr;gap:13px 18px}.public-app footer#contacts>div{font-size:12px;gap:14px}
 }
 @media(prefers-reduced-motion:reduce){.bw-business .bw-business-types article{transition:none}}
+@media(max-width:600px){
+ .public-header .bw-logo-scene{padding-right:104px}
+ .public-header:has(>.bw-logo-scene)>.header-actions{width:100%;margin-left:0;display:flex;align-items:center;gap:8px}
+ .public-header .header-actions .bw-header-calc{flex:1;min-width:0;height:38px;justify-content:center}
+ .public-header .header-actions .bw-signin-button,.public-header .header-actions .bw-account{height:38px;min-width:78px;justify-content:center}
+ .public-header .header-actions .bw-account{width:38px;min-width:38px}
+ .public-header .header-actions .mobile-toggle{width:38px;min-width:38px;height:38px;padding:7px;border:1px solid #dce6ce;border-radius:12px;background:#f3f7e9}
+ .bw-marketing .bw-service-cards{gap:12px;padding:22px 20% 28px;margin:0 -14px;scroll-padding-inline:20%;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;overflow-y:hidden;scrollbar-width:none}
+ .bw-marketing .bw-service-cards::-webkit-scrollbar{display:none}
+ .bw-marketing .bw-service-cards>button,.bw-marketing .bw-service-cards>button:last-child{flex:0 0 clamp(160px,52vw,230px);transform:scale(var(--bw-card-scale,1));transform-origin:center;transition:transform .18s ease-out,box-shadow .22s ease}
+ .bw-marketing .bw-service-cards>button:hover,.bw-marketing .bw-service-cards>button:focus-visible{transform:scale(var(--bw-card-scale,1))}
+ .bw-marketing .bw-service-cleaning-progress{right:22px}
+ .bw-kitten-support{right:22px}
+}
