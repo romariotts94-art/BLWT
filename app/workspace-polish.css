@@ -44,6 +44,7 @@ html,body,.workspace,.public-app{overscroll-behavior-x:none}
 .worker-readiness-dialog p{margin:0;color:#5a6753;line-height:1.5}
 .worker-readiness-actions{display:grid;gap:10px;margin:22px 0}
 .worker-readiness-actions .btn{display:flex;align-items:center;justify-content:center;gap:9px;min-height:48px}
+.worker-readiness-dialog .worker-readiness-approval{margin:16px 0;padding:13px 15px;border:1px solid #dce6cd;border-radius:13px;background:#eff4e7;color:#354b32}
 .worker-readiness-dialog small{display:block;color:#66735e;font-size:12px;line-height:1.5}
 .worker-readiness-close{position:absolute;top:14px;right:14px;display:grid;place-items:center;width:36px;height:36px;border:1px solid #dce6cd;border-radius:50%;background:#fff;cursor:pointer}
 @media(max-width:760px){
