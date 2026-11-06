@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://blackandwhite-mos.ru/sitemap.xml
+Sitemap: https://blacktowhite.ru/sitemap.xml

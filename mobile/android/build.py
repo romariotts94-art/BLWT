@@ -18,7 +18,7 @@ def run(*cmd): subprocess.run([str(x) for x in cmd],check=True,env=env)
 manifest=(root/'AndroidManifest.xml').read_text()
 if qa: manifest=manifest.replace('package="ru.blackandwhite.mobile"','package="ru.blackandwhite.mobile.qa"').replace('android:usesCleartextTraffic="false"','android:usesCleartextTraffic="true" android:debuggable="true"').replace('android:label="Black to White"','android:label="BW Local QA"')
 (out/'AndroidManifest.xml').write_text(manifest)
-origin='http://127.0.0.1:5196' if qa else 'https://blackandwhite-mos.ru'
+origin='http://127.0.0.1:5196' if qa else 'https://blacktowhite.ru'
 config=out/'gen/ru/blackandwhite/mobile/BuildConfig.java';config.parent.mkdir(parents=True,exist_ok=True)
 config.write_text('package ru.blackandwhite.mobile; public final class BuildConfig { public static final boolean DEBUG='+str(qa).lower()+'; public static final String ORIGIN="'+origin+'"; }')
 run(bt/'aapt2','compile','--dir',root/'res','-o',out/'resources.zip')

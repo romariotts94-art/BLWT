@@ -2,7 +2,11 @@ www.blackandwhite-mos.ru {
   redir https://blackandwhite-mos.ru{uri} permanent
 }
 
-blackandwhite-mos.ru {
+www.blacktowhite.ru {
+  redir https://blacktowhite.ru{uri} permanent
+}
+
+blackandwhite-mos.ru, blacktowhite.ru {
   encode gzip zstd
   handle /media/* {
     root * /srv/black-and-white
