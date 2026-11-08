@@ -23,7 +23,7 @@ export async function publishedProfiles(id?:string){
 }
 export async function showcase(){const config=await setting('cleaner_showcase',{mode:'rating',slots:['','','']});return {config,cards:rankedProfiles(await publishedProfiles(),config.mode==='manual'?config.slots:[])};}
 export async function previewCleaner(id:string){
- if((env as any).TRUST_DEMO_ENABLED!=='true'||(env as any).TRUST_PREVIEW_WORKER_ID!==id)return null;
+ if((env as any).TRUST_PREVIEW_WORKER_ID!==id)return null;
  const row=await one(`SELECT m.id,m.active,m.role,p.bio,p.city_id,c.* FROM members m JOIN worker_profiles p ON p.member_id=m.id JOIN cleaner_cards c ON c.member_id=m.id WHERE m.id=? AND m.active=1 AND m.role IN ('cleaner','leader')`,id);
  if(!row)return null;
  const questions=await setting('cleaner_questions:'+id,[]);
