@@ -3,6 +3,7 @@ import {z} from 'zod';
 import {all,one,run,currentUser,requireAdmin,guardOrigin,json,fail,HttpError,now,uid,transaction} from '../../../lib/server';
 import {cardSchema,publicCard} from '../../../lib/care-policy';
 import {cleanerAccess} from '../../../lib/cleaner-access';
+import {setting,trustKey,trustCurrent} from '../../../lib/cleaner-trust';
 export const dynamic='force-dynamic';
 export async function GET(req:Request){try{
  const u=await currentUser(),url=new URL(req.url);let id=url.searchParams.get('id');
@@ -11,14 +12,9 @@ export async function GET(req:Request){try{
  await cleanerAccess(u,id);const row=await one("SELECT m.name,m.email,p.*,c.display_name,c.experience_years,c.languages,c.specialties,c.equipment,c.avatar_key,c.fragrance_free,c.pet_friendly,c.own_products,c.gender,city.name AS city,(SELECT COUNT(*) FROM orders o WHERE o.assigned_worker_id=m.id AND o.status='completed') AS completed FROM members m LEFT JOIN worker_profiles p ON p.member_id=m.id LEFT JOIN cleaner_cards c ON c.member_id=m.id LEFT JOIN cities city ON city.id=p.city_id WHERE m.id=? AND m.role IN ('cleaner','leader')",id);
  if(!row)throw new HttpError(404,'Исполнитель не найден');row.member_id=id;
  const reviews=(await all("SELECT details FROM orders WHERE assigned_worker_id=? AND status='completed' ORDER BY updated DESC LIMIT 200",id)).map(r=>JSON.parse(r.details).review).filter(r=>r?.publishConsent);
- const workPhotos=await all("SELECT id,name,created FROM documents WHERE worker_id=? AND name LIKE ? ORDER BY created DESC LIMIT 12",id,'Фото работы · %');
- const demo=row.email==='developer-worker@blackandwhite.local';
- const demoReviews=[
-  {rating:5,text:'Очень аккуратно и спокойно работает. Всё согласовали заранее, результатом довольна.',created:'2026-10-18T10:00:00.000Z'},
-  {rating:5,text:'Приехала вовремя, бережно отнеслась к вещам и оставила отличный фотоотчёт.',created:'2026-10-11T10:00:00.000Z'},
-  {rating:4,text:'Хорошая уборка и понятная коммуникация. Закажу ещё раз.',created:'2026-10-03T10:00:00.000Z'}
- ];
- const card=publicCard({...row,avatar_url:demo?'/media/worker-avatar-demo.png':undefined,workPhotos:workPhotos.length?workPhotos:demo?['/media/review-apartment-01.jpg','/media/review-apartment-03.jpg','/media/review-apartment-07.jpg']:[]},reviews.length?reviews:demo?demoReviews:[]);
+ const workPhotos=await all("SELECT id,name,created FROM documents WHERE worker_id=? AND name LIKE ? ORDER BY created DESC LIMIT 30",id,'Фото работы · %');
+ const trust=await setting(trustKey(id)),checked=trustCurrent(row,trust);
+ const card=publicCard({...row,workPhotos,identityCheckedAt:checked?trust.approvedAt:null,experienceCheckedAt:checked?trust.approvedAt:null},reviews);
  return json({card,editable:u.role==='admin'||u.id===id,profile:u.role==='admin'||u.id===id?row:undefined});
  }catch(e){return fail(e)}}
 export async function POST(req:Request){try{

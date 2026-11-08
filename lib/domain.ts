@@ -158,7 +158,7 @@ export function normalizeRates(saved:any={}){
  for(const [k,v] of Object.entries(extras))merged.extras[k]={...v,...saved?.extras?.[k]};
  return merged;
 }
-export const reviewSchema=z.object({rating:z.number().int().min(1).max(5),name:z.string().trim().min(2).max(40),text:z.string().trim().min(20).max(1500),publishConsent:z.boolean()});
+export const reviewSchema=z.object({rating:z.number().int().min(1).max(5),name:z.string().trim().min(2).max(40),text:z.string().trim().min(20).max(1500),publishConsent:z.boolean(),profilePublishConsent:z.boolean().default(false)});
 export function publicReviews(records:any[]){return records.filter(o=>o.status==='completed'&&o.review?.publishConsent===true).map(o=>({name:o.review.name,rating:o.review.rating,text:o.review.text,service:o.service,date:o.review.created}));}
 
 export const statuses:Record<string,string>={requested:'Новая заявка',offered:'Подбор исполнителя',needs_reschedule:'Нужно выбрать новую дату',contract_pending:'Подтверждение договора',admin_review:'Проверка назначения',assigned:'Подтверждён',en_route:'Исполнитель в пути',in_progress:'Уборка идёт',review:'Приёмка',completed:'Завершён',cancelled:'Отменён'};

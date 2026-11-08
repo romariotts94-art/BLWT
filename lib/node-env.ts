@@ -159,6 +159,8 @@ const BUCKET = {
 export const env = {
   DB,
   BUCKET,
+  TRUST_DEMO_ENABLED: process.env.TRUST_DEMO_ENABLED || "false",
+  TRUST_PREVIEW_WORKER_ID: process.env.TRUST_PREVIEW_WORKER_ID || "",
   RELEASE_SHA: process.env.RELEASE_SHA || "",
   TRUST_CHATGPT_AUTH_HEADERS: false,
   OWNER_EMAILS: process.env.OWNER_EMAILS || "",

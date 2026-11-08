@@ -21,7 +21,7 @@ export async function POST(req:Request){try{guardOrigin(req);const b=z.record(z.
  const id=z.string().uuid().parse(b.id);const o=await orderAccess(id,u,b.action==='accept'||b.action==='decline');const crew=o.crew.includes(u.id),client=o.clientId===u.id;
  if(b.action==='review'){
  if(!client||o.status!=='completed')throw new HttpError(403,'Отзыв доступен только клиенту завершённого заказа');
- const review={...reviewSchema.parse(b),created:now()};await updateOrder(o,{review},u,'Клиент обновил отзыв');return json({ok:true});
+ const review={...reviewSchema.parse(b),created:o.review?.created||now(),updated:now()};await updateOrder(o,{review},u,'Клиент обновил отзыв');return json({ok:true});
  }
  if(b.action==='check'){if(!crew&&u.role!=='admin')throw new HttpError(403,'Нет доступа');if(o.status!=='in_progress')throw new HttpError(400,'Чек-лист доступен во время уборки');const i=z.number().int().min(0).max(o.checklist.length-1).parse(b.index);o.checklist[i].done=z.boolean().parse(b.done);await updateOrder(o,{checklist:o.checklist},u,'Обновлён чек-лист');return json({ok:true});}
  if(b.action==='message'){if(['completed','cancelled'].includes(o.status))throw new HttpError(400,'Заказ закрыт');const text=z.string().trim().min(1).max(2000).parse(b.text);await run('INSERT INTO messages(id,order_id,user_id,name,text,created) VALUES(?,?,?,?,?,?)',uid(),id,u.id,u.name,text,now());await notify([o.clientId,...o.crew,...await admins()].filter(x=>x!==u.id),id,'Новое сообщение в заказе');return json({ok:true});}

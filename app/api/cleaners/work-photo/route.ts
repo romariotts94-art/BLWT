@@ -27,7 +27,7 @@ export async function POST(req:Request){try{
  if(u.role!=='admin'&&(u.id!==workerId||!['cleaner','leader'].includes(u.role)))throw new HttpError(403,'Нет доступа');
  if(!await one("SELECT id FROM members WHERE id=? AND role IN ('cleaner','leader')",workerId))throw new HttpError(404,'Исполнитель не найден');
  if(!(file instanceof File))throw new HttpError(400,'Выберите фотографию');const bytes=new Uint8Array(await file.arrayBuffer());if(!validImage(file,bytes))throw new HttpError(400,'Содержимое файла не соответствует типу');
- if(!(env as any).BUCKET)throw new HttpError(503,'Хранилище фотографий пока не подключено');if(Number((await one("SELECT COUNT(*) AS n FROM documents WHERE worker_id=? AND name LIKE ?",workerId,prefix+'%')).n)>=12)throw new HttpError(400,'Можно добавить до 12 фотографий работ');
+ if(!(env as any).BUCKET)throw new HttpError(503,'Хранилище фотографий пока не подключено');if(Number((await one("SELECT COUNT(*) AS n FROM documents WHERE worker_id=? AND name LIKE ?",workerId,prefix+'%')).n)>=30)throw new HttpError(400,'Можно добавить до 30 фотографий работ');
  const id=uid();await (env as any).BUCKET.put(id,bytes,{httpMetadata:{contentType:file.type}});await run('INSERT INTO documents(id,worker_id,uploader_id,name,mime,size,storage_key,review_status,review_note,created) VALUES(?,?,?,?,?,?,?,?,?,?)',id,workerId,u.id,prefix+file.name.slice(0,180),file.type,file.size,id,'approved','',now());return json({ok:true,id});
 }catch(e){return fail(e)}}
 

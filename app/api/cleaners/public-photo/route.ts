@@ -1,0 +1,5 @@
+import {env} from 'cloudflare:workers';
+import {one,fail,HttpError} from '../../../../lib/server';
+import {publishedProfiles,previewCleaner} from '../../../../lib/cleaner-trust';
+export const dynamic='force-dynamic';
+export async function GET(req:Request){try{const url=new URL(req.url),id=url.searchParams.get('worker'),photo=url.searchParams.get('photo');const card=(await publishedProfiles(id||undefined)).find(c=>c.id===id)||id&&await previewCleaner(id);if(!card)throw new HttpError(404,'Фото недоступно');if(photo&&!card.workPhotos.some(p=>p.id===photo))throw new HttpError(404,'Фото недоступно');const row=await one('SELECT avatar_key FROM cleaner_cards WHERE member_id=?',id),key=photo||row.avatar_key;const doc=await one('SELECT mime,storage_key FROM documents WHERE id=? AND worker_id=?',key,id);if(!doc||!['image/jpeg','image/png','image/webp'].includes(doc.mime))throw new HttpError(404,'Фото недоступно');const file=await env.BUCKET?.get(doc.storage_key);if(!file)throw new HttpError(404,'Фото недоступно');return new Response(file.body,{headers:{'Content-Type':doc.mime,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}})}catch(e){return fail(e)}}
