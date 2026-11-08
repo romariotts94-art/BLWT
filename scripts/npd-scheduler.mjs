@@ -195,7 +195,7 @@ async function refreshOpenOffers() {
     const result = await pool.query(
       `SELECT o.id AS order_id, o.details, m.id AS worker_id
        FROM orders o JOIN members m ON ${numberedOfferWhere}`,
-      [nowMs, moscowDate(), moscowDate(), nowMs],
+      [nowMs, moscowDate(), nowMs],
     );
     for (const row of result.rows) {
       const details = typeof row.details === 'string' ? JSON.parse(row.details) : row.details;

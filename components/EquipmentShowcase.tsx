@@ -34,7 +34,7 @@ export default function EquipmentShowcase({sectionNumber='03'}:{sectionNumber?:s
       <div><div className="bw-heading-copy"><span className="eyebrow">{sectionNumber} / АКАДЕМИЯ УБОРКИ</span><h2>Чистота начинается<br/><em>со знаний</em></h2></div><PencilVignette kind="academy"/></div>
     </div>
     <div className="bw-academy-story">
-      <article><span className="bw-story-icon"><GraduationCap size={25}/></span><span className="eyebrow">01 / ЗНАНИЯ</span><h3>Знания для<br/>бережной уборки</h3><p>Исполнителям доступны интерактивные задания, инструкции по уходу и проверка знаний. Допуск к заказам зависит от проверки профиля и статуса НПД или ИП.</p></article>
+      <article><span className="bw-story-icon"><GraduationCap size={25}/></span><span className="eyebrow">01 / ЗНАНИЯ</span><h3>Знания для<br/>бережной уборки</h3><p>Исполнителям доступны интерактивные задания, инструкции по уходу и проверка знаний. Допуск к заказам зависит от проверки профиля и статуса НПД без статуса ИП.</p></article>
       <article><span className="bw-story-icon"><ScanLine size={25}/></span><span className="eyebrow">02 / ТОЧНОСТЬ</span><h3>Каждой поверхности —<br/>свой подход</h3><p>Материал, задача, условия дома. Исполнитель использует матрицу, чтобы подобрать средство и способ ухода.</p></article>
       <article><span className="bw-story-icon"><ShieldCheck size={25}/></span><span className="eyebrow">03 / БЕРЕЖНОСТЬ</span><h3>Качество —<br/>в деталях</h3><p>Средства с инструкциями производителей, точная дозировка и проверка покрытия перед применением.</p></article>
     </div>

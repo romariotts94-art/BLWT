@@ -6,7 +6,7 @@ export const services = {
   deep:{name:'Генеральная',description:'Более подробная уборка, включая доступные труднодоступные зоны.',rate:190,min:9500,speed:12},
   renovation:{name:'После ремонта',description:'Удаление строительной пыли и согласованных следов ремонта.',rate:230,min:11500,speed:10},
   office:{name:'Уборка офиса',description:'Рабочие зоны, общие пространства и санузлы по согласованному плану.',rate:55,min:4500,speed:35},
-  custom:{name:'Индивидуальная смета',description:'Для коммерческих и нестандартных объектов — после оценки объёма работ.',rate:0,min:0,speed:20},
+  custom:{name:'Индивидуальная смета',description:'Для нестандартных бытовых задач — после оценки объёма работ.',rate:0,min:0,speed:20},
 };
 export const extras = {
   "windows": {
@@ -161,7 +161,7 @@ export function normalizeRates(saved:any={}){
 export const reviewSchema=z.object({rating:z.number().int().min(1).max(5),name:z.string().trim().min(2).max(40),text:z.string().trim().min(20).max(1500),publishConsent:z.boolean()});
 export function publicReviews(records:any[]){return records.filter(o=>o.status==='completed'&&o.review?.publishConsent===true).map(o=>({name:o.review.name,rating:o.review.rating,text:o.review.text,service:o.service,date:o.review.created}));}
 
-export const statuses:Record<string,string>={requested:'Новая заявка',offered:'Подбор сотрудников',needs_reschedule:'Нужно выбрать новую дату',contract_pending:'Подтверждение договора',admin_review:'Проверка назначения',assigned:'Подтверждён',en_route:'Команда в пути',in_progress:'Уборка идёт',review:'Приёмка',completed:'Завершён',cancelled:'Отменён'};
+export const statuses:Record<string,string>={requested:'Новая заявка',offered:'Подбор исполнителя',needs_reschedule:'Нужно выбрать новую дату',contract_pending:'Подтверждение договора',admin_review:'Проверка назначения',assigned:'Подтверждён',en_route:'Исполнитель в пути',in_progress:'Уборка идёт',review:'Приёмка',completed:'Завершён',cancelled:'Отменён'};
 export const steps=['requested','offered','assigned','en_route','in_progress','review','completed'];
 export const transitions:Record<string,string[]>={requested:['offered','cancelled'],offered:['offered','contract_pending','cancelled','needs_reschedule'],needs_reschedule:['offered','cancelled'],contract_pending:['cancelled'],admin_review:['cancelled'],assigned:['en_route','cancelled'],en_route:['in_progress','cancelled'],in_progress:['review'],review:['completed','in_progress'],completed:[],cancelled:[]};
 export const quoteSchema=z.object({catalogService:z.string().refine(id=>cleaningCatalog.some(s=>s.id===id),'Неизвестный вид уборки').optional(),service:z.enum(['standard','deep','renovation','office','custom']),area:z.number().min(15).max(10000),dirt:z.number().int().min(0).max(2),frequency:z.number().int().min(0).max(2),urgent:z.boolean(),extras:z.record(z.string(),z.number().int().min(0).max(30)).refine(v=>Object.keys(v).every(k=>k in extras),'Неизвестная дополнительная услуга'),workers:z.number().int().min(0).max(12)});
@@ -183,7 +183,7 @@ export function isWithinUrgentWindow(date:string,time:string,offset='+03:00',now
  const target=Date.parse(`${date}T${time}:00${offset}`),remaining=target-now;
  return Number.isFinite(target)&&remaining>=0&&remaining<86400000;
 }
-export const bookingSchema=quoteSchema.extend({preferences:preferencesSchema,name:z.string().trim().max(100),phone:z.string().trim().max(22),address:z.string().trim().max(400),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>Number.isFinite(Date.parse(v+'T12:00:00Z'))&&new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v,'Укажите существующую дату'),time:z.string().regex(/^(0[8-9]|1\d|20):[03]0$/),notes:z.string().max(2000),liveConsent:z.boolean(),terms:z.literal(true)});
+export const bookingSchema=quoteSchema.extend({personalUse:z.literal(true),service:z.enum(['standard','deep','renovation','custom']),workers:z.number().int().min(0).max(1),preferences:preferencesSchema,name:z.string().trim().max(100),phone:z.string().trim().max(22),address:z.string().trim().max(400),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>Number.isFinite(Date.parse(v+'T12:00:00Z'))&&new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v,'Укажите существующую дату'),time:z.string().regex(/^(0[8-9]|1\d|20):[03]0$/),notes:z.string().max(2000),liveConsent:z.boolean(),terms:z.literal(true)});
 export const checklist=['Полы и плинтусы','Пыль и поверхности','Кухня и рабочие зоны','Санузлы и сантехника','Зеркала и стекло','Мусор и финальная проверка'];
 export const money=(n:number)=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:0}).format(n);
 export function publicQuote(q:any){const {payroll,transport,video,supplies,overhead,taxReserve,cost,contribution,margin,...rest}=q;return rest;}

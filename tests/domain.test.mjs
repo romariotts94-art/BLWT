@@ -14,3 +14,11 @@ test('Внешний ответ не раскрывает маржу и выпл
 test('Проверка пересечения включает час на дорогу',()=>{const a={date:'2026-10-22',time:'10:00',quote:{hours:3}},b={date:'2026-10-22',time:'13:30',quote:{hours:2}},c={...b,time:'14:00'};assert.equal(overlaps(a,b),true);assert.equal(overlaps(a,c),false)});
 test('Нельзя завершить новую заявку, закрытые статусы финальны',()=>{assert.equal(transitions.requested.includes('completed'),false);assert.deepEqual(transitions.completed,[]);assert.deepEqual(transitions.cancelled,[]);assert.ok(transitions.review.includes('in_progress'))});
 test('Плановые расходы и остаток сходятся',()=>{const q=calculate(input);assert.equal(q.cost,q.payroll+q.transport+q.video+q.supplies+q.overhead+q.taxReserve);assert.equal(q.total,q.cost+q.contribution)});
+
+// Business orders and unconfirmed personal purpose must fail at the API schema boundary.
+test('Запуск требует частный заказ и исключает офисы и бригады',()=>{
+ const booking={...input,catalogService:'standard',name:'Анна',phone:'+79991234567',address:'Москва, тестовый адрес',date:'2026-11-10',time:'10:00',notes:'',liveConsent:false,terms:true,personalUse:true};
+ assert.equal(bookingSchema.safeParse(booking).success,true);
+ for(const change of [{personalUse:false},{personalUse:undefined},{service:'office'},{catalogService:'commercial'},{catalogService:'rental'},{workers:2}])assert.equal(bookingSchema.safeParse({...booking,...change}).success,false);
+ assert.equal(calculate({...input,service:'office'}).total>0,true,'historical office estimates remain readable');
+});

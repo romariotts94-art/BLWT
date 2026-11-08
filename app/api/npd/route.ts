@@ -1,10 +1,10 @@
 import {readJsonBody} from '../../../lib/request-body';
 import { z } from 'zod';
-import { all, currentUser, event, fail, guardOrigin, HttpError, json, now, one, requireAdmin, run, uid } from '../../../lib/server';
+import { all, currentUser, event, fail, guardOrigin, HttpError, json, now, one, requireAdmin, run, uid, transaction } from '../../../lib/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-const innSchema = z.string().trim().regex(/^(?:\d{10}|\d{12})$/, 'Введите ИНН из 10 или 12 цифр');
+const innSchema = z.string().trim().regex(/^\d{12}$/, 'Введите ИНН физического лица из 12 цифр');
 const COEFFICIENTS_10 = [2, 4, 10, 3, 5, 9, 4, 6, 8];
 const COEFFICIENTS_11 = [7, 2, 4, 10, 3, 5, 9, 4, 6, 8];
 const COEFFICIENTS_12 = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8];
@@ -37,15 +37,20 @@ export async function POST(req: Request) {
   try {
     guardOrigin(req);
     const user = await currentUser();
-    const body = z.object({ action: z.enum(['saveInn', 'check']), workerId: z.string().uuid().optional(), inn: z.string().optional(), consent: z.boolean().optional() }).parse(await readJsonBody(req));
+    const body = z.object({ action: z.enum(['saveInn', 'check']), workerId: z.string().uuid().optional(), inn: z.string().optional(), consent: z.boolean().optional(), nonIp: z.boolean().optional() }).parse(await readJsonBody(req));
     if (body.action === 'saveInn') {
       if (!['cleaner', 'leader'].includes(user.role)) throw new HttpError(403, 'ИНН в анкете может изменить только исполнитель');
+      if (body.nonIp !== true) throw new HttpError(400, 'Подтвердите, что вы являетесь самозанятым без статуса ИП');
       if (body.consent !== true) throw new HttpError(400, 'Подтвердите согласие на ежедневную проверку статуса в ФНС');
       const inn = body.inn ? body.inn.replace(/\s/g, '') : '';
       if (!validInn(inn)) throw new HttpError(400, 'Проверьте ИНН: контрольные цифры не совпадают');
-      await run('INSERT INTO worker_profiles(member_id,updated) VALUES(?,?) ON CONFLICT(member_id) DO NOTHING', user.id, now());
-      await run('UPDATE worker_profiles SET contractor_type=\'npd\',verified=0,npd_inn=?,npd_consent_at=?,npd_status=NULL,npd_checked_at=NULL,npd_checked_on=NULL,npd_message=?,updated=? WHERE member_id=?', inn, now(), 'Ожидает проверки ФНС', now(), user.id);
-      await event(null, user.id, 'Исполнитель предоставил ИНН и согласие на ежедневную проверку НПД');
+      await transaction(async tx=>{
+      await tx.run('INSERT INTO worker_profiles(member_id,updated) VALUES(?,?) ON CONFLICT(member_id) DO NOTHING', user.id, now());
+      await tx.one('SELECT member_id FROM worker_profiles WHERE member_id=? FOR UPDATE',user.id);
+      await tx.run('UPDATE worker_profiles SET contractor_type=\'npd\',verified=0,npd_inn=?,npd_consent_at=?,npd_status=NULL,npd_checked_at=NULL,npd_checked_on=NULL,npd_message=?,updated=? WHERE member_id=?', inn, now(), 'Ожидает проверки ФНС', now(), user.id);
+      await tx.run('DELETE FROM settings WHERE key=?','non_ip_verification:'+user.id);
+      });
+      await event(null, user.id, 'Исполнитель заявил об отсутствии статуса ИП, предоставил ИНН и согласие на ежедневную проверку НПД');
       return json({ ok: true, message: 'ИНН сохранён. После проверки ФНС статус появится в анкете.' });
     }
 
@@ -77,7 +82,7 @@ export async function POST(req: Request) {
     const saved = await run('UPDATE worker_profiles SET npd_status=?,npd_checked_at=?,npd_checked_on=?,npd_message=?,updated=? WHERE member_id=? AND contractor_type=\'npd\' AND npd_inn=? AND npd_consent_at=?', status === null ? null : status ? 1 : 0, checkedAt, requestDate, message, checkedAt, workerId, profile.npd_inn, profile.npd_consent_at);
     if (!saved.meta.changes) throw new HttpError(409, 'ИНН изменился во время проверки. Проверьте актуальные данные.');
     await event(null, user.id, `Проверен статус НПД исполнителя ${profile.name}: ${status === null ? 'ошибка проверки' : status ? 'активен' : 'не зарегистрирован'}`);
-    const notice = status === true ? 'ФНС подтвердила активный статус самозанятого. Приём заказов разрешён.' : status === false ? 'ФНС не подтвердила статус самозанятого. Приём новых заказов приостановлен. Оформите НПД и сообщите администрации.' : 'Проверка ФНС не завершилась. Приём новых заказов временно приостановлен до подтверждения статуса.';
+    const notice = status === true ? 'ФНС подтвердила статус НПД. Для получения заказов также нужен допуск администратора и проверка отсутствия статуса ИП.' : status === false ? 'ФНС не подтвердила статус самозанятого. Приём новых заказов приостановлен. Оформите НПД и сообщите администрации.' : 'Проверка ФНС не завершилась. Приём новых заказов временно приостановлен до подтверждения статуса.';
     await run('INSERT INTO notices(id,user_id,text,created) VALUES(?,?,?,?)', uid(), workerId, notice, checkedAt);
     return json({ ok: true, result: { status, checkedAt, checkedOn: requestDate, message } });
   } catch (error) { return fail(error); }

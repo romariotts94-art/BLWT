@@ -41,14 +41,14 @@ function PencilScene({kind='standard'}:{kind?:string}){
 
 const workflow=[
  {icon:ClipboardCheck,title:'Выберите состав работ',text:'Укажите формат уборки, площадь и нужные дополнения. Предварительная смета обновится сразу.',detail:'Укажите в заявке, если дома есть дети или питомцы, а также сообщите об аллергии и деликатных покрытиях.',cta:'Собрать заказ'},
- {icon:CalendarDays,title:'Подтвердите заказ',text:'Укажите удобную дату и адрес. Менеджер уточнит доступность команды, время и итоговую стоимость.',detail:'Заявка станет заказом после подтверждения. Дополнительные работы и их стоимость согласуем заранее.',cta:'Выбрать дату'},
+ {icon:CalendarDays,title:'Подтвердите заказ',text:'Укажите удобную дату и адрес. Менеджер уточнит доступность исполнителя, время и итоговую стоимость.',detail:'Заявка станет заказом после подтверждения. Дополнительные работы и их стоимость согласуем заранее.',cta:'Выбрать дату'},
  {icon:MessageCircle,title:'Обсудите детали',text:'Задайте вопросы и передайте пожелания в чате заказа.',detail:'Переписка и договорённости сохраняются в личном кабинете.',cta:'Открыть чат'},
  {icon:CheckCircle2,title:'Проверьте результат',text:'Сверьте выполненные работы с согласованным списком и фотоотчётом.',detail:'Если есть замечания, сообщите о них до завершения заказа. После уборки можно оставить отзыв.',cta:'Открыть кабинет'}
 ];
 const benefits=[
  {icon:EyeIcon,title:'Больше спокойствия',text:'Видите, что происходит в квартире, даже когда заняты своими делами.',screen:'Наблюдайте за процессом',note:'Камера показывает только попавшую в кадр область и не является гарантией сохранности вещей.'},
  {icon:ClipboardCheck,title:'Качество видно',text:'Сверяйте процесс с выбранными задачами, а результат — с фотоотчётом.',screen:'Список задач рядом',note:'Окончательная приёмка — по согласованному чек-листу заказа.'},
- {icon:MessageCircle,title:'Команда на связи',text:'Уточняйте пожелания в чате заказа. Все договорённости остаются в одном месте.',screen:'Пожелания — в чате',note:'Сообщения видят участники заказа. Скорость ответа зависит от занятости команды и связи.'},
+ {icon:MessageCircle,title:'Исполнитель на связи',text:'Уточняйте пожелания в чате заказа. Все договорённости остаются в одном месте.',screen:'Пожелания — в чате',note:'Сообщения видят участники заказа. Скорость ответа зависит от занятости исполнителя и связи.'},
  {icon:LockKeyhole,title:'Личное остаётся личным',text:'Доступ по заказу, отдельное согласие и пауза приватности — под вашим контролем.',screen:'Ваше пространство. Ваш выбор.',note:'Пожелания и границы доступа к дому заранее согласуются с клиентом.'}
 ];
 function EyeIcon(p:any){return <Video {...p}/>}
@@ -170,7 +170,6 @@ const [selected,setSelected]=useState(serviceCatalog[0].id),[openServiceCards,se
 
   {reviews.length>0&&<section id="reviews" className="bw-section bw-reviews"><div className="bw-section-heading"><div><span className="eyebrow">{VIDEO_FEATURE_ENABLED?'05':'04'} / ОТЗЫВЫ</span><h2>Опыт клиентов<br/><em>после уборки</em></h2></div><p>Здесь опубликованы отзывы по завершённым заказам. Каждый клиент отдельно разрешил публикацию.</p></div><div className="bw-tabs" aria-label="Фильтр отзывов">{['Все',...Object.values(services).map(s=>s.name)].map(s=><button key={s} aria-pressed={reviewFilter===s} className={reviewFilter===s?'active':''} onClick={()=>setReviewFilter(s)}>{s}</button>)}</div><div className="bw-review-grid">{shownReviews.map((r,i)=><article key={i}><div className="bw-stars" aria-label={r.rating+' из 5'}>{[1,2,3,4,5].map(n=><Star key={n} size={18} fill={n<=r.rating?'currentColor':'none'}/>)}</div><p>«{r.text}»</p><div className="bw-review-author"><span>{r.name.slice(0,1)}</span><div><strong>{r.name}</strong><small>{services[r.service as keyof typeof services]?.name} · {new Date(r.date).toLocaleDateString('ru-RU')}</small></div><ShieldCheck size={22}/></div><small>Отзыв по завершённому заказу</small></article>)}</div>{!shownReviews.length&&<p className="bw-empty">В этой категории пока нет отзывов.</p>}</section>}
 
-  <section id="business" className="bw-business"><div><span className="eyebrow">{String((VIDEO_FEATURE_ENABLED?5:4)+(reviews.length>0?1:0)).padStart(2,'0')} / ДЛЯ БИЗНЕСА</span><h2>Уборка для офисов<br/><em>и коммерческих объектов</em></h2><p>Обслуживание офиса или нескольких объектов.<br/>Состав работ, график и смету согласуем до начала сотрудничества.</p><button className="btn accent" onClick={()=>onBook('custom')}>Обсудить сотрудничество <ArrowUpRight size={20}/></button></div><div className="bw-business-types">{[['БЦ','Бизнес-центры','Офисы и общие пространства'],['RE','Девелоперы','Помещения после ремонта'],['HO','Гостеприимство','Апартаменты и рестораны'],['RT','Ритейл','Магазины и шоурумы']].map(([m,t,d])=><article key={t}><span>{m}</span><h3>{t}</h3><p>{d}</p></article>)}</div><p className="bw-business-note">Публикуем названия клиентов и логотипы партнёров только с их разрешения.</p></section>
 
 
  </div>
