@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {ArrowRight, BookUser, Check, MessageCircle, RefreshCw, Sparkles, Star} from 'lucide-react';
 import {demoCleaners} from '../lib/demo-cleaners';
 
@@ -24,6 +24,9 @@ function WelcomeMark() {
 export default function TrustSection({onBook}: {onBook: () => void}) {
   const [cards, setCards] = useState<any[]>([]);
   const [demo, setDemo] = useState(false);
+  const carousel = useRef<HTMLDivElement>(null);
+  const resumeAt = useRef(0);
+  const interacting = useRef(false);
 
   useEffect(() => {
     const section = document.getElementById('cleaners');
@@ -56,13 +59,36 @@ export default function TrustSection({onBook}: {onBook: () => void}) {
     ? demoCleaners.map((example, index) => cards.find(card => card.position === index) || example)
     : cards;
 
+  const goToSlide = (index: number) => {
+    const el = carousel.current;
+    if (!el || !el.children[index]) return;
+    const first = el.children[0] as HTMLElement;
+    const next = el.children[index] as HTMLElement;
+    el.scrollTo({left: next.offsetLeft - first.offsetLeft, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+  };
+  useEffect(() => {
+    if (displayed.length < 2) return;
+    const timer = window.setInterval(() => {
+      const el = carousel.current;
+      if (!el || interacting.current || el.contains(document.activeElement) || document.hidden || Date.now() < resumeAt.current || !window.matchMedia('(max-width: 700px)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+      const first = el.children[0] as HTMLElement;
+      const second = el.children[1] as HTMLElement;
+      const step = second.offsetLeft - first.offsetLeft;
+      const index = Math.round(el.scrollLeft / step);
+      goToSlide((index + 1) % displayed.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [displayed.length]);
+
   return <section id="cleaners" className="trust-section" aria-labelledby="trust-title">
     <div className="trust-heading-top">
       <WelcomeMark/>
       <span className="eyebrow">СПОКОЙНО ЗА СВОЙ ДОМ</span>
     </div>
     <div className="trust-heading">
-      <h2 id="trust-title">Сначала знакомитесь.<br/><em>Потом открываете дверь.</em></h2>
+      <h2 id="trust-title">Сначала знакомитесь<br/><em>Потом открываете дверь</em></h2>
       <p>Ещё до уборки вы знаете, кто приедет. Фото, опыт и результаты проверок — в анкете. Пожелания и важные детали — в личном чате.</p>
     </div>
     {displayed.length > 0 && <>
@@ -70,7 +96,12 @@ export default function TrustSection({onBook}: {onBook: () => void}) {
         <h3>Познакомьтесь с исполнителями</h3>
         <span><MessageCircle size={16} strokeWidth={1.5} aria-hidden="true"/> Всё можно обсудить до встречи</span>
       </div>
-      <div className="trust-cards">
+      <div className="trust-cards" ref={carousel} data-count={displayed.length}
+        onPointerDown={() => { interacting.current = true; resumeAt.current = Date.now() + 12000; }}
+        onPointerUp={() => { interacting.current = false; resumeAt.current = Date.now() + 12000; }}
+        onPointerCancel={() => { interacting.current = false; resumeAt.current = Date.now() + 12000; }}
+        onTouchEnd={() => { interacting.current = false; resumeAt.current = Date.now() + 12000; }}
+      >
         {displayed.map(card => {
           const href = '/cleaners/' + encodeURIComponent(card.id);
           const checked = !(card.demo || card.preview);
@@ -98,6 +129,7 @@ export default function TrustSection({onBook}: {onBook: () => void}) {
           </article>;
         })}
       </div>
+
     </>}
     <ol className="trust-story" aria-label="От заказа до знакомства">
       <li><span className="trust-step" aria-hidden="true">01</span><div><h3>Знаете, кто приедет</h3><p>Первый подходящий исполнитель принимает заказ — вы видите его анкету.</p></div></li>
