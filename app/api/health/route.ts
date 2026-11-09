@@ -9,7 +9,7 @@ const REQUIRED_TABLES = [
   'auth_codes','auth_sessions','documents','contracts','cities','customer_profiles','customer_cities',
   'worker_profiles','worker_availability','order_skips','worker_agreements','quality_attempts',
   'wallet_ledger','withdrawal_requests','order_incidents','cleaner_cards','staff_messages',
-  'support_tickets','support_messages','support_delivery','npd_check_gate','admin_profiles','order_direct_messages','management_messages','order_dialog_triage','profile_messages',
+  'support_tickets','support_messages','support_delivery','npd_check_gate','admin_profiles','order_direct_messages','management_messages','order_dialog_triage','profile_messages','legal_acceptances','contract_versions','order_finance','finance_events','payout_recipients','fiscal_documents','refund_requests',
 ];
 
 export async function GET(){
@@ -17,7 +17,7 @@ export async function GET(){
     await one(`SELECT 1 FROM ${REQUIRED_TABLES.join(',')} LIMIT 0`);
     await one('SELECT legal_name,claim_email,legal_checked_at,contractor_type,npd_checked_on,ip_checked_on FROM worker_profiles LIMIT 0');
     await one('SELECT marketplace_version,assigned_worker_id,payout_cents,request_key FROM orders LIMIT 0');
-    return Response.json({ok:true,schema:'0015',release:(env as any).RELEASE_SHA||null},{headers:{'Cache-Control':'no-store'}});
+    return Response.json({ok:true,schema:'0016',release:(env as any).RELEASE_SHA||null},{headers:{'Cache-Control':'no-store'}});
   }catch{
     return Response.json({ok:false},{status:503,headers:{'Cache-Control':'no-store'}});
   }

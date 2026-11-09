@@ -1,0 +1,7 @@
+import {currentUser,guardOrigin,json,fail,HttpError,transaction,uid,now} from '../../../lib/server';
+import {legalDocument,LegalId} from '../../../lib/legal-content';
+import {acceptLegal,acceptanceStatus,legalSnapshot} from '../../../lib/legal-service';
+import {readJsonBody} from '../../../lib/request-body';
+export const dynamic='force-dynamic';
+export async function GET(req:Request){try{const id=new URL(req.url).searchParams.get('id')||'terms';if(!legalDocument(id))throw new HttpError(404,'Документ не найден');let u:any=null;try{u=await currentUser();}catch(e:any){if(e.status!==401)throw e;}const doc=await legalSnapshot(u?.id||null,id as LegalId);return json({...doc,acceptance:u?await acceptanceStatus(u.id,id as LegalId):null});}catch(e){return fail(e);}}
+export async function POST(req:Request){try{guardOrigin(req);const u=await currentUser();const b:any=await readJsonBody(req);if(b.accepted!==true||!['terms','partner','consent','publication'].includes(b.id))throw new HttpError(400,'Подтвердите прочитанный документ');if(b.id==='partner'&&!['cleaner','leader'].includes(u.role))throw new HttpError(403,'Договор доступен исполнителю');await transaction(async tx=>{await tx.one('SELECT id FROM members WHERE id=? FOR UPDATE',u.id);await acceptLegal(u.id,b.id,b.version,b.hash,tx);await tx.run('INSERT INTO audit(id,order_id,actor,action,created) VALUES(?,?,?,?,?)',uid(),null,u.id,'Подтверждён документ '+b.id+' '+b.version,now());});return json({ok:true});}catch(e){return fail(e);}}

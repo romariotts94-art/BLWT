@@ -1,0 +1,10 @@
+import {currentUser,orderAccess,one,all,fail,HttpError} from '../../../lib/server';
+import {allocation} from '../../../lib/finance-policy';
+export const dynamic='force-dynamic';
+export async function GET(req:Request){try{const u=await currentUser(),id=new URL(req.url).searchParams.get('order');if(!id)throw new HttpError(400,'Не указан заказ');const o=await orderAccess(id,u);if(u.role!=='admin'&&u.id!==o.clientId&&u.id!==o.assignedWorkerId)throw new HttpError(403,'Нет доступа');
+ const contracts=await all('SELECT * FROM contract_versions WHERE order_id=? ORDER BY created',id),f=await one('SELECT * FROM order_finance WHERE order_id=?',id),refunds=await all('SELECT * FROM refund_requests WHERE order_id=? ORDER BY created',id);
+ const result:any={exportedAt:new Date().toISOString(),order:{id:o.id,status:o.status,service:o.service,date:o.date,priceCents:o.grossCents},contracts,receipts:await all('SELECT kind,provider_reference,receipt_url,amount_cents,created FROM fiscal_documents WHERE order_id=?',id),refunds};
+ if(u.role==='admin'||u.id===o.assignedWorkerId){result.agentReport=f?allocation(Number(f.captured_cents),Number(f.refunded_cents),Number(f.payout_cents)):null;result.agentReportNote='Отчёт по подтверждённым операциям. Суммы в копейках; налоговая база НПД включает полную стоимость услуги. Не является кассовым чеком или банковским платёжным поручением.';result.partnerAgreements=await all("SELECT version,body,body_hash,accepted_at FROM legal_acceptances WHERE member_id=? AND document_key='partner' ORDER BY accepted_at",o.assignedWorkerId);}
+ if(u.role==='admin'){result.finance=f;result.bankEvents=await all('SELECT * FROM finance_events WHERE order_id=? ORDER BY created',id);result.audit=await all('SELECT * FROM audit WHERE order_id=? ORDER BY created',id);result.photos=await all('SELECT id,purpose,created FROM media WHERE order_id=?',id);result.checklist=o.checklist;result.productsUsed=o.productsUsed;result.issue=o.issue;result.issueResolution=o.issueResolution;}
+ return Response.json(result,{headers:{'Cache-Control':'no-store','Content-Disposition':`attachment; filename="BLWT-${id}.json"`}});
+}catch(e){return fail(e);}}

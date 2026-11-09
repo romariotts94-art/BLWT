@@ -159,6 +159,7 @@ const BUCKET = {
 export const env = {
   DB,
   BUCKET,
+  BANK_RECONCILIATION_ENABLED: process.env.BANK_RECONCILIATION_ENABLED || "false",
   TRUST_DEMO_ENABLED: process.env.TRUST_DEMO_ENABLED || "false",
   TRUST_PREVIEW_WORKER_ID: process.env.TRUST_PREVIEW_WORKER_ID || "",
   RELEASE_SHA: process.env.RELEASE_SHA || "",
