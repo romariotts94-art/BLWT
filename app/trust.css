@@ -161,3 +161,12 @@
 .care-photo-dialog::backdrop{background:#102018ed;backdrop-filter:blur(8px)}
 .care-photo-dialog .care-photo-viewer-panel{margin:0;padding:0}
 @media(max-width:600px){.care-photo-dialog{padding:10px}.care-photo-dialog .care-photo-viewer-panel{height:84dvh}.care-photo-dialog figure{touch-action:pan-y}}
+
+/* Mobile: swipeable cards with idle autoplay and no visible controls. */
+.trust-cards[data-count="1"]{grid-template-columns:minmax(0,420px);justify-content:center}
+@media(max-width:700px){
+  .trust-cards{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;position:relative;overscroll-behavior-x:contain;align-items:stretch;padding:2px 0 8px}
+  .trust-cards::-webkit-scrollbar{display:none}
+  .trust-cards .trust-card{flex:0 0 100%;min-width:0;box-sizing:border-box;scroll-snap-align:start;scroll-snap-stop:always}
+  .trust-cards[data-count="1"]{justify-content:initial}
+}
