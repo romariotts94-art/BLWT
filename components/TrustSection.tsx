@@ -118,7 +118,7 @@ export default function TrustSection({onBook}: {onBook: () => void}) {
                   <Star size={15} fill="currentColor" aria-hidden="true"/>{card.rating} <small>({card.reviews.length})</small>
                 </span>}
               </div>
-              <div className="trust-card-meta"><span>{experienceLabel(card.experienceYears)}</span><span>{card.city || 'Москва'}</span></div>
+              <div className="trust-card-meta">{card.age && <span>{card.age} года</span>}<span>{experienceLabel(card.experienceYears)}</span><span>{card.city || 'Москва'}</span></div>
               <p className="trust-specialty">{card.specialties || 'Уборка квартир и домов'}</p>
               <div className="trust-checks">
                 <div><BookUser size={18} strokeWidth={1.5} aria-hidden="true"/><span>{checked ? 'Паспорт проверен' : 'Проверка паспорта'}</span>{checked && <Check size={15} aria-hidden="true"/>}</div>
