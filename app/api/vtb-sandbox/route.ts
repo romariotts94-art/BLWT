@@ -4,7 +4,8 @@ import {currentUser,orderAccess,one,all,run,unpack,json,fail,HttpError,isOwner,g
 import {currentSignedContract} from '../../../lib/order-contract';
 import {readJsonBody} from '../../../lib/request-body';
 import {registerPreAuth,getOrderStatus,getOrderStatusByNumber,capture,reverse,decline,refund,RbsRejectedError} from '../../../lib/vtb-rbs';
-import {checkedBankStatus,confirmedAmounts,allowedAction,type AttemptState} from '../../../lib/vtb-sandbox-policy';
+import {checkedBankStatus,confirmedAmounts,allowedAction,shouldRecordBankDecline,type AttemptState} from '../../../lib/vtb-sandbox-policy';
+import {RECONCILE_BATCH_SIZE,RECONCILE_MAX_AGE_MS,RECONCILE_MIN_AGE_MS,RECONCILE_PASSIVE_AGE_MS,RECONCILE_STATES,shouldReconcileAttempt,validReconcileToken} from '../../../lib/vtb-reconcile';
 
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
@@ -26,7 +27,7 @@ function bankError(e:unknown){return new HttpError(502,e instanceof Error?e.mess
 async function record(attemptId:string,action:string,result:string,amount:number|null,bankStatus:number|null){await run('INSERT INTO vtb_sandbox_events(id,attempt_id,action,amount_cents,result,bank_status,created) VALUES(?,?,?,?,?,?,?)',uid(),attemptId,action,amount,result,bankStatus,now())}
 
 async function syncFinance(a:Attempt,bankStatus:number,captured:number,refunded:number,tx:{one:(sql:string,...params:any[])=>Promise<any>,run:(sql:string,...params:any[])=>Promise<any>}){
- if(![1,2,3,4,8].includes(bankStatus)&&refunded===Number(a.refunded_cents))return;
+ if(![1,2,3,4,6,8].includes(bankStatus)&&refunded===Number(a.refunded_cents))return;
   const row=await tx.one('SELECT gross_cents FROM orders WHERE id=? FOR UPDATE',a.order_id);
   if(!row||Number(row.gross_cents)!==Number(a.amount_cents))throw new HttpError(409,'Цена тестового заказа изменилась');
   let f=await tx.one('SELECT * FROM order_finance WHERE order_id=? FOR UPDATE',a.order_id);
@@ -42,6 +43,8 @@ async function syncFinance(a:Attempt,bankStatus:number,captured:number,refunded:
    if(captured>priorCaptured){await tx.run('UPDATE order_finance SET state=?,captured_cents=?,authorization_expires_at=NULL,updated=? WHERE order_id=?','captured',captured,now(),a.order_id);events.push({kind:'captured',amount:captured-priorCaptured,total:captured});}
   }else if(bankStatus===3&&['unpaid','authorized'].includes(f.state)){
    await tx.run('UPDATE order_finance SET state=?,authorization_expires_at=NULL,updated=? WHERE order_id=?','reversed',now(),a.order_id);events.push({kind:'reversed',amount:Number(a.amount_cents),total:0});
+  }else if(shouldRecordBankDecline(bankStatus,f.state,priorCaptured,priorRefunded)){
+   await tx.run('UPDATE order_finance SET state=?,authorization_expires_at=NULL,updated=? WHERE order_id=?','declined',now(),a.order_id);events.push({kind:'declined',amount:Number(a.amount_cents),total:0});
   }
   if(refunded>priorRefunded){
    if(refunded>captured)throw new HttpError(502,'Возврат ВТБ превышает подтверждённое списание');
@@ -78,6 +81,28 @@ async function refresh(a:Attempt):Promise<Attempt>{
 }
 async function access(a:Attempt,u:any){const o=await orderAccess(a.order_id,u);if(o.clientId!==u.id&&!(u.role==='admin'&&isOwner(u)))throw new HttpError(403,'Тестовый платёж недоступен');return o}
 
+async function reconcileBatch(){
+ const time=Date.now(),cutoff=new Date(time-RECONCILE_MIN_AGE_MS).toISOString(),passiveCutoff=new Date(time-RECONCILE_PASSIVE_AGE_MS).toISOString(),earliest=new Date(time-RECONCILE_MAX_AGE_MS).toISOString();
+ const placeholders=RECONCILE_STATES.map(()=>'?').join(',');
+ const candidates=await all(`SELECT id FROM vtb_sandbox_attempts WHERE created>=? AND (provider_order_id IS NOT NULL OR state IN ('registering','registration_unknown')) AND (state IN (${placeholders}) OR pending_action IS NOT NULL) AND ((updated<=? AND (state IN ('registering','registration_unknown','registered','authorized') OR pending_action IS NOT NULL)) OR updated<=?) ORDER BY updated ASC LIMIT ?`,earliest,...RECONCILE_STATES,cutoff,passiveCutoff,RECONCILE_BATCH_SIZE);
+ let checked=0,failed=0;
+ for(const candidate of candidates){
+  try{
+   const attempt=await transaction(async tx=>{
+    const current=await tx.one('SELECT * FROM vtb_sandbox_attempts WHERE id=? FOR UPDATE',candidate.id) as Attempt;
+    if(!current||!shouldReconcileAttempt(current,time))return null;
+    const checkedAt=now(),state=current.state==='registering'&&!current.provider_order_id?'registration_unknown':current.state;
+    await tx.run('UPDATE vtb_sandbox_attempts SET state=?,updated=? WHERE id=?',state,checkedAt,current.id);
+    return {...current,state,updated:checkedAt} as Attempt;
+   });
+   if(!attempt)continue;
+   checked++;
+   await refresh(attempt);
+  }catch(e){failed++;console.error('VTB reconciliation failed for attempt',candidate.id,e instanceof Error?e.message:'unknown error')}
+ }
+ return json({checked,failed});
+}
+
 export async function GET(req:Request){try{
  if((env as any).VTB_SANDBOX_ENABLED!=='true')return json({enabled:false});
  await stageOrigin();const u=await currentUser(),url=new URL(req.url),id=url.searchParams.get('attempt'),orderId=url.searchParams.get('order');
@@ -89,6 +114,13 @@ export async function GET(req:Request){try{
 }catch(e){return fail(e)}}
 
 export async function POST(req:Request){try{
+ if(req.headers.has('x-vtb-reconcile-token')){
+  if(!validReconcileToken(req.headers.get('x-vtb-reconcile-token'),String((env as any).VTB_RECONCILE_TOKEN||'')))throw new HttpError(403,'Недопустимый служебный доступ');
+  const body:any=await readJsonBody(req);if(body.action!=='reconcile')throw new HttpError(400,'Недопустимая служебная операция');
+  await stageOrigin();
+  if((await one("SELECT value FROM settings WHERE key='deployment_mode'"))?.value!=='vtb-main-qa')throw new HttpError(404,'Автосверка доступна только на основном сайте');
+  return await reconcileBatch();
+ }
  guardOrigin(req);const origin=await stageOrigin(),u=await currentUser(),b:any=await readJsonBody(req);
  if((await one("SELECT value FROM settings WHERE key='deployment_mode'"))?.value==='vtb-main-qa'&&!(u.role==='admin'&&isOwner(u)))throw new HttpError(403,'Тестовый платёж доступен только владельцу');
  if(b.action==='start'){
@@ -136,7 +168,7 @@ export async function POST(req:Request){try{
   try{if(b.action==='capture')await capture(claim.provider_order_id!,amount,credentials());else if(b.action==='reverse')await reverse(claim.provider_order_id!,credentials());else if(b.action==='decline')await decline(claim.provider_order_id!,claim.order_number,credentials());else await refund(claim.provider_order_id!,amount,operationId,Number(claim.captured_cents)-Number(claim.refunded_cents),credentials());
    await record(id,b.action,'accepted',amount,null);
   }catch(e){
-   if(b.action==='decline'&&e instanceof RbsRejectedError){
+   if(e instanceof RbsRejectedError){
     await transaction(async tx=>{const locked=await tx.one('SELECT pending_action_id FROM vtb_sandbox_attempts WHERE id=? FOR UPDATE',id);if(locked?.pending_action_id===operationId)await tx.run('UPDATE vtb_sandbox_attempts SET pending_action=NULL,pending_action_id=NULL,pending_amount_cents=NULL,updated=? WHERE id=?',now(),id)});
     await record(id,b.action,'rejected',amount,null);
    }else await record(id,b.action,'unknown',amount,null);

@@ -9,3 +9,13 @@ services:
         source: ${VTB_CA_BUNDLE_PATH:?Set VTB_CA_BUNDLE_PATH in the private .env file}
         target: /app/private/vtb-ca-bundle.pem
         read_only: true
+  vtb-reconciler:
+    image: black-and-white-app
+    restart: unless-stopped
+    command: ["node", "scripts/vtb-reconcile.mjs"]
+    environment:
+      VTB_SANDBOX_ENABLED: ${VTB_SANDBOX_ENABLED:-false}
+      VTB_RECONCILE_TOKEN: ${VTB_RECONCILE_TOKEN:-}
+    depends_on:
+      app:
+        condition: service_healthy

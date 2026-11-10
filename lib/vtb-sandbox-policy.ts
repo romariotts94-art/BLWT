@@ -39,9 +39,17 @@ export function checkedBankStatus(status:RbsStatus,attempt:{order_number:string,
  if(status.orderNumber!==attempt.order_number||status.amount!==Number(attempt.amount_cents))throw Error('Данные заказа ВТБ не совпали с тестовым заказом BLWT');
  if(status.currency!==null&&status.currency!=='643')throw Error('ВТБ вернул другую валюту');
  if(status.orderStatus===2&&status.depositedAmount===null)throw Error('ВТБ не подтвердил сумму списания');
+  if(status.orderStatus===2&&status.depositedAmount===0&&status.refundedAmount===0)throw Error('ВТБ сообщил списание без суммы');
  if(status.orderStatus===4&&status.refundedAmount===null)throw Error('ВТБ не подтвердил сумму возврата');
+  if(status.orderStatus===6&&((status.depositedAmount??0)!==0||(status.refundedAmount??0)!==0))throw Error('ВТБ сообщил отказ после движения средств');
  confirmedAmounts(status,attempt);
  return bankState(status,attempt);
+}
+export function shouldRecordBankDecline(bankStatus:number,financeState:string,captured:number,refunded:number){
+ if(bankStatus!==6)return false;
+ if(captured!==0||refunded!==0)throw Error('ВТБ сообщил отказ после движения средств');
+ if(!['unpaid','authorized','declined'].includes(financeState))throw Error('ВТБ сообщил отказ после закрытой финансовой операции');
+ return financeState==='unpaid'||financeState==='authorized';
 }
 export function allowedAction(action:string,state:AttemptState,amount:number,gross:number,captured=0,refunded=0){
  if(!Number.isSafeInteger(amount)||amount<=0||!Number.isSafeInteger(gross)||gross<=0)throw Error('Некорректная сумма операции');

@@ -18,6 +18,7 @@ COPY --from=build /app/node_modules/.nitro ./node_modules/.nitro
 COPY --from=build /app/.output ./.output
 COPY --from=build /app/scripts/support-delivery.mjs ./scripts/support-delivery.mjs
 COPY --from=build /app/scripts/npd-scheduler.mjs ./scripts/npd-scheduler.mjs
+COPY --from=build /app/scripts/vtb-reconcile.mjs ./scripts/vtb-reconcile.mjs
 COPY --from=build /app/lib/cities.json ./lib/cities.json
 COPY --from=build /app/lib/offer-eligibility.mjs ./lib/offer-eligibility.mjs
 COPY --from=build /app/scripts/migrate-postgres.mjs ./scripts/migrate-postgres.mjs

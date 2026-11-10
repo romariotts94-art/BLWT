@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {registerPreAuth,getOrderStatus,capture,decline,refund,RbsRejectedError} from '../lib/vtb-rbs.ts';
-import {bankState,checkedBankStatus,confirmedAmounts,allowedAction} from '../lib/vtb-sandbox-policy.ts';
+import {registerPreAuth,getOrderStatus,capture,reverse,decline,refund,RbsRejectedError} from '../lib/vtb-rbs.ts';
+import {bankState,checkedBankStatus,confirmedAmounts,allowedAction,shouldRecordBankDecline} from '../lib/vtb-sandbox-policy.ts';
 const id='11111111-2222-4333-8444-555555555555';
 const credentials={userName:'sandbox-user',password:'private-test-value'};
 function mock(body,status=200){let request;return {fetcher:async(url,options)=>{request={url,options};return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}})},get request(){return request}}}
@@ -20,7 +20,16 @@ test('RBS status uses nested bank-confirmed amount totals',async()=>{
  assert.equal(checkedBankStatus(status,{order_number:id,amount_cents:470000,captured_cents:0,refunded_cents:0}),'captured');
  assert.throws(()=>checkedBankStatus({...status,amount:470001},{order_number:id,amount_cents:470000,captured_cents:0,refunded_cents:0}),/не совпали/);
  assert.throws(()=>checkedBankStatus({...status,depositedAmount:null},{order_number:id,amount_cents:470000,captured_cents:0,refunded_cents:0}),/не подтвердил/);
+ assert.throws(()=>checkedBankStatus({...status,depositedAmount:0},{order_number:id,amount_cents:470000,captured_cents:0,refunded_cents:0}),/списание без суммы/);
  assert.equal(bankState({...status,refundedAmount:20000},{captured_cents:470000,refunded_cents:0}),'partially_refunded');
+});
+test('explicit bank denials are distinguishable from unknown transport failures for every follow-up operation',async()=>{
+ const denied=()=>mock({errorCode:5,errorMessage:'Not permitted'}).fetcher;
+ await assert.rejects(()=>capture(id,100,credentials,denied()),RbsRejectedError);
+ await assert.rejects(()=>reverse(id,credentials,denied()),RbsRejectedError);
+ await assert.rejects(()=>refund(id,100,id,470000,credentials,denied()),RbsRejectedError);
+ await assert.rejects(()=>decline(id,id,credentials,denied()),RbsRejectedError);
+ await assert.rejects(()=>capture(id,100,credentials,mock({errorCode:5,errorMessage:'Unavailable'},503).fetcher),error=>error instanceof Error&&!(error instanceof RbsRejectedError));
 });
 test('capture and refund amounts are bounded, refund has retry identity',async()=>{
  assert.doesNotThrow(()=>allowedAction('capture','authorized',200000,470000));
@@ -47,4 +56,15 @@ test('full refund preserves historical captured amount and records the bank-conf
  assert.equal(checkedBankStatus(status,prior),'refunded');
  assert.deepEqual(confirmedAmounts(status,prior),{captured:470000,refunded:470000});
  assert.throws(()=>confirmedAmounts({...status,refundedAmount:470001},prior),/противоречат/);
+});
+test('a bank decline closes an unpaid or authorized finance record without a capture',()=>{
+ const status={orderStatus:6,amount:470000,currency:'643',orderNumber:id,actionCode:0,depositedAmount:0,refundedAmount:0,providerOrderId:id};
+ const attempt={order_number:id,amount_cents:470000,captured_cents:0,refunded_cents:0};
+ assert.equal(checkedBankStatus(status,attempt),'declined');
+ assert.equal(shouldRecordBankDecline(6,'authorized',0,0),true);
+ assert.equal(shouldRecordBankDecline(6,'unpaid',0,0),true);
+ assert.equal(shouldRecordBankDecline(6,'declined',0,0),false);
+ assert.throws(()=>shouldRecordBankDecline(6,'captured',100,0),/отказ после движения средств/);
+ assert.throws(()=>shouldRecordBankDecline(6,'captured',0,0),/закрытой финансовой операции/);
+ assert.throws(()=>checkedBankStatus({...status,depositedAmount:100},attempt),/отказ после движения средств/);
 });
