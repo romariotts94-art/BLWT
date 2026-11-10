@@ -19,7 +19,7 @@ export async function GET(){
     await one(`SELECT 1 FROM ${[...REQUIRED_TABLES,...(sandbox?SANDBOX_TABLES:[])].join(',')} LIMIT 0`);
     await one('SELECT legal_name,claim_email,legal_checked_at,contractor_type,npd_checked_on,ip_checked_on FROM worker_profiles LIMIT 0');
     await one('SELECT marketplace_version,assigned_worker_id,payout_cents,request_key FROM orders LIMIT 0');
-    return Response.json({ok:true,schema:sandbox?'0017':'0016',release:(env as any).RELEASE_SHA||null},{headers:{'Cache-Control':'no-store'}});
+    return Response.json({ok:true,schema:sandbox?'0018':'0016',release:(env as any).RELEASE_SHA||null},{headers:{'Cache-Control':'no-store'}});
   }catch{
     return Response.json({ok:false},{status:503,headers:{'Cache-Control':'no-store'}});
   }

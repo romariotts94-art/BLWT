@@ -3,7 +3,7 @@ import {z} from 'zod';
 import {currentUser,orderAccess,one,all,run,unpack,json,fail,HttpError,isOwner,guardOrigin,transaction,uid,now} from '../../../lib/server';
 import {currentSignedContract} from '../../../lib/order-contract';
 import {readJsonBody} from '../../../lib/request-body';
-import {registerPreAuth,getOrderStatus,getOrderStatusByNumber,capture,reverse,refund} from '../../../lib/vtb-rbs';
+import {registerPreAuth,getOrderStatus,getOrderStatusByNumber,capture,reverse,decline,refund} from '../../../lib/vtb-rbs';
 import {checkedBankStatus,confirmedAmounts,allowedAction,type AttemptState} from '../../../lib/vtb-sandbox-policy';
 
 export const dynamic='force-dynamic';
@@ -13,9 +13,11 @@ type Attempt={id:string,order_id:string,order_number:string,amount_cents:number|
 const credentials=()=>({userName:String((env as any).VTB_SANDBOX_USER_NAME||''),password:String((env as any).VTB_SANDBOX_PASSWORD||'')});
 
 async function stageOrigin(){
- if((env as any).VTB_SANDBOX_ENABLED!=='true'||(await one("SELECT value FROM settings WHERE key='deployment_mode'"))?.value!=='vtb-sandbox')throw new HttpError(404,'Тестовая оплата недоступна');
+ const mode=(await one("SELECT value FROM settings WHERE key='deployment_mode'"))?.value;
+ if((env as any).VTB_SANDBOX_ENABLED!=='true'||!['vtb-sandbox','vtb-main-qa'].includes(mode))throw new HttpError(404,'Тестовая оплата недоступна');
  let url:URL;try{url=new URL(String((env as any).VTB_SANDBOX_RETURN_ORIGIN||''))}catch{throw new HttpError(503,'Не задан адрес тестового стенда')}
- if(!['http:','https:'].includes(url.protocol)||url.protocol==='http:'&&!['127.0.0.1','localhost'].includes(url.hostname)||['blacktowhite.ru','www.blacktowhite.ru'].includes(url.hostname))throw new HttpError(503,'Некорректный адрес тестового стенда');
+ const configured=new URL(String((env as any).PUBLIC_ORIGIN||'http://127.0.0.1'));
+ if(url.origin!==configured.origin||url.protocol==='http:'&&!['127.0.0.1','localhost'].includes(url.hostname)||mode==='vtb-main-qa'&&url.origin!=='https://blacktowhite.ru')throw new HttpError(503,'Некорректный адрес тестового стенда');
  if(!credentials().userName||!credentials().password)throw new HttpError(503,'Не заданы тестовые учётные данные ВТБ');
  return url.origin;
 }
@@ -23,9 +25,8 @@ function expose(a:Attempt){return {id:a.id,orderId:a.order_id,amountCents:Number
 function bankError(e:unknown){return new HttpError(502,e instanceof Error?e.message:'ВТБ не ответил')}
 async function record(attemptId:string,action:string,result:string,amount:number|null,bankStatus:number|null){await run('INSERT INTO vtb_sandbox_events(id,attempt_id,action,amount_cents,result,bank_status,created) VALUES(?,?,?,?,?,?,?)',uid(),attemptId,action,amount,result,bankStatus,now())}
 
-async function syncFinance(a:Attempt,bankStatus:number,captured:number,refunded:number){
+async function syncFinance(a:Attempt,bankStatus:number,captured:number,refunded:number,tx:{one:(sql:string,...params:any[])=>Promise<any>,run:(sql:string,...params:any[])=>Promise<any>}){
  if(![1,2,3,4,8].includes(bankStatus)&&refunded===Number(a.refunded_cents))return;
- await transaction(async tx=>{
   const row=await tx.one('SELECT gross_cents FROM orders WHERE id=? FOR UPDATE',a.order_id);
   if(!row||Number(row.gross_cents)!==Number(a.amount_cents))throw new HttpError(409,'Цена тестового заказа изменилась');
   let f=await tx.one('SELECT * FROM order_finance WHERE order_id=? FOR UPDATE',a.order_id);
@@ -47,33 +48,40 @@ async function syncFinance(a:Attempt,bankStatus:number,captured:number,refunded:
    await tx.run('UPDATE order_finance SET state=?,refunded_cents=?,updated=? WHERE order_id=?',refunded===captured?'refunded':'partially_refunded',refunded,now(),a.order_id);events.push({kind:'refunded',amount:refunded-priorRefunded,total:refunded});
   }
   for(const event of events)await tx.run('INSERT INTO finance_events(id,order_id,kind,amount_cents,reference,body,actor,created) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(reference) DO NOTHING',uid(),a.order_id,event.kind,event.amount,`vtb-sandbox:${a.provider_order_id}:${event.kind}:${event.total}`,JSON.stringify({mode:'sandbox',bankStatus}),'vtb-sandbox',now());
- });
 }
 async function refresh(a:Attempt):Promise<Attempt>{
  let status;try{status=a.provider_order_id?await getOrderStatus(a.provider_order_id,credentials()):a.state==='registration_unknown'?await getOrderStatusByNumber(a.order_number,credentials()):null}catch(e){throw bankError(e)}
  if(!status)return a;
- if(!a.provider_order_id){
-  if(!status.providerOrderId)throw new HttpError(409,'ВТБ подтвердил тестовый заказ, но не вернул его ID. Владелец должен сверить ID в кабинете банка. Повторная регистрация заблокирована.');
-  a={...a,provider_order_id:status.providerOrderId};
-  await run('UPDATE vtb_sandbox_attempts SET provider_order_id=?,updated=? WHERE id=?',status.providerOrderId,now(),a.id);
- }
- let state:AttemptState;try{state=checkedBankStatus(status,a)}catch(e){throw bankError(e)}
- if(['captured','partially_captured','partially_refunded','refunded','reversed'].includes(a.state)&&['registered','authorized'].includes(state))throw new HttpError(502,'Статус ВТБ вернулся к ранней стадии');
- const {captured,refunded}=confirmedAmounts(status,a);
- if(refunded>captured)throw new HttpError(502,'Возврат ВТБ превышает списание');
- if(a.pending_action==='capture'&&captured>Number(a.captured_cents)+Number(a.pending_amount_cents||0))throw new HttpError(502,'ВТБ подтвердил списание больше запрошенного');
- if(a.pending_action==='refund'&&refunded>Number(a.refunded_cents)+Number(a.pending_amount_cents||0))throw new HttpError(502,'ВТБ подтвердил возврат больше запрошенного');
- await syncFinance(a,status.orderStatus,captured,refunded);
- const pendingResolved=a.pending_action==='capture'?captured>=Number(a.captured_cents)+Number(a.pending_amount_cents||0):a.pending_action==='reverse'?state==='reversed':a.pending_action==='refund'?refunded>=Number(a.refunded_cents)+Number(a.pending_amount_cents||0):false;
- await run('UPDATE vtb_sandbox_attempts SET state=?,bank_status=?,captured_cents=?,refunded_cents=?,pending_action=CASE WHEN ? THEN NULL ELSE pending_action END,pending_action_id=CASE WHEN ? THEN NULL ELSE pending_action_id END,pending_amount_cents=CASE WHEN ? THEN NULL ELSE pending_amount_cents END,updated=? WHERE id=?',state,status.orderStatus,captured,refunded,pendingResolved,pendingResolved,pendingResolved,now(),a.id);
- if(state!==a.state||status.orderStatus!==a.bank_status)await record(a.id,'status','confirmed',null,status.orderStatus);
- return (await one('SELECT * FROM vtb_sandbox_attempts WHERE id=?',a.id)) as Attempt;
+ return transaction(async tx=>{
+  await tx.one('SELECT id FROM orders WHERE id=? FOR UPDATE',a.order_id);
+  const current=await tx.one('SELECT * FROM vtb_sandbox_attempts WHERE id=? FOR UPDATE',a.id) as Attempt;
+  if(!current)throw new HttpError(404,'Тестовый платёж не найден');
+  if(!current.provider_order_id&&!status.providerOrderId)throw new HttpError(409,'ВТБ подтвердил тестовый заказ, но не вернул его ID. Владелец должен сверить ID в кабинете банка. Повторная регистрация заблокирована.');
+  if(current.provider_order_id&&status.providerOrderId&&current.provider_order_id!==status.providerOrderId)throw new HttpError(502,'ВТБ вернул другой ID заказа');
+  const providerOrderId=current.provider_order_id||status.providerOrderId!;
+  let state:AttemptState;try{state=checkedBankStatus(status,current)}catch(e){throw bankError(e)}
+  if(['authorized','partially_captured','captured','partially_refunded','refunded','reversed','declined'].includes(current.state)&&state==='registered'||
+     ['partially_captured','captured','partially_refunded','refunded','reversed','declined'].includes(current.state)&&state==='authorized'||
+     ['reversed','declined'].includes(current.state)&&state!==current.state||
+     current.state==='refunded'&&state!=='refunded')throw new HttpError(502,'Статус ВТБ вернулся к ранней стадии');
+  const {captured,refunded}=confirmedAmounts(status,current);
+  if(refunded>captured)throw new HttpError(502,'Возврат ВТБ превышает списание');
+  if(current.pending_action==='capture'&&captured>Number(current.captured_cents)+Number(current.pending_amount_cents||0))throw new HttpError(502,'ВТБ подтвердил списание больше запрошенного');
+  if(current.pending_action==='refund'&&refunded>Number(current.refunded_cents)+Number(current.pending_amount_cents||0))throw new HttpError(502,'ВТБ подтвердил возврат больше запрошенного');
+  const confirmed={...current,provider_order_id:providerOrderId};
+  await syncFinance(confirmed,status.orderStatus,captured,refunded,tx);
+  const pendingResolved=current.pending_action==='capture'?captured>=Number(current.captured_cents)+Number(current.pending_amount_cents||0):current.pending_action==='reverse'?state==='reversed':current.pending_action==='decline'?state==='declined':current.pending_action==='refund'?refunded>=Number(current.refunded_cents)+Number(current.pending_amount_cents||0):false;
+  await tx.run('UPDATE vtb_sandbox_attempts SET provider_order_id=?,state=?,bank_status=?,captured_cents=?,refunded_cents=?,pending_action=CASE WHEN ? THEN NULL ELSE pending_action END,pending_action_id=CASE WHEN ? THEN NULL ELSE pending_action_id END,pending_amount_cents=CASE WHEN ? THEN NULL ELSE pending_amount_cents END,updated=? WHERE id=?',providerOrderId,state,status.orderStatus,captured,refunded,pendingResolved,pendingResolved,pendingResolved,now(),a.id);
+  if(state!==current.state||status.orderStatus!==current.bank_status)await tx.run('INSERT INTO vtb_sandbox_events(id,attempt_id,action,amount_cents,result,bank_status,created) VALUES(?,?,?,?,?,?,?)',uid(),a.id,'status',null,'confirmed',status.orderStatus,now());
+  return (await tx.one('SELECT * FROM vtb_sandbox_attempts WHERE id=?',a.id)) as Attempt;
+ });
 }
 async function access(a:Attempt,u:any){const o=await orderAccess(a.order_id,u);if(o.clientId!==u.id&&!(u.role==='admin'&&isOwner(u)))throw new HttpError(403,'Тестовый платёж недоступен');return o}
 
 export async function GET(req:Request){try{
  if((env as any).VTB_SANDBOX_ENABLED!=='true')return json({enabled:false});
  await stageOrigin();const u=await currentUser(),url=new URL(req.url),id=url.searchParams.get('attempt'),orderId=url.searchParams.get('order');
+ if((await one("SELECT value FROM settings WHERE key='deployment_mode'"))?.value==='vtb-main-qa'&&!(u.role==='admin'&&isOwner(u)))throw new HttpError(403,'Тестовый платёж доступен только владельцу');
  if(!id&&!orderId)throw new HttpError(400,'Не указан тестовый заказ');
  const a=id?await one('SELECT * FROM vtb_sandbox_attempts WHERE id=?',UUID.parse(id)):await one('SELECT * FROM vtb_sandbox_attempts WHERE order_id=? ORDER BY created DESC LIMIT 1',UUID.parse(orderId));
  const o=await orderAccess(String(a?.order_id||orderId||''),u);if(o.clientId!==u.id&&!(u.role==='admin'&&isOwner(u)))throw new HttpError(403,'Тестовый платёж недоступен');
@@ -82,6 +90,7 @@ export async function GET(req:Request){try{
 
 export async function POST(req:Request){try{
  guardOrigin(req);const origin=await stageOrigin(),u=await currentUser(),b:any=await readJsonBody(req);
+ if((await one("SELECT value FROM settings WHERE key='deployment_mode'"))?.value==='vtb-main-qa'&&!(u.role==='admin'&&isOwner(u)))throw new HttpError(403,'Тестовый платёж доступен только владельцу');
  if(b.action==='start'){
   const id=UUID.parse(b.orderId),o=await orderAccess(id,u);
   if(o.clientId!==u.id&&!(u.role==='admin'&&isOwner(u)))throw new HttpError(403,'Тестовую оплату запускает заказчик');
@@ -116,15 +125,15 @@ export async function POST(req:Request){try{
   await record(id,'recover','confirmed',null,status.orderStatus);
   return json({attempt:expose(await refresh(updated))});
  }
- if(['capture','reverse','refund'].includes(b.action)){
+ if(['capture','reverse','decline','refund'].includes(b.action)){
   if(u.role!=='admin'||!isOwner(u))throw new HttpError(403,'Операция доступна владельцу тестового стенда');
   const id=UUID.parse(b.attemptId),a=await one('SELECT * FROM vtb_sandbox_attempts WHERE id=?',id) as Attempt;
   if(!a)throw new HttpError(404,'Тестовый платёж не найден');await access(a,u);
   const current=await refresh(a);if(current.pending_action)throw new HttpError(409,'Сначала сверните результат предыдущей операции с ВТБ');
-  const amount=b.action==='reverse'?Number(current.amount_cents):z.number().int().positive().safe().parse(b.amountCents);
+  const amount=['reverse','decline'].includes(b.action)?Number(current.amount_cents):z.number().int().positive().safe().parse(b.amountCents);
   try{allowedAction(b.action,current.state,amount,Number(current.amount_cents),Number(current.captured_cents),Number(current.refunded_cents))}catch(e){throw new HttpError(409,(e as Error).message)}
   const operationId=uid();const claim=await transaction(async tx=>{const locked=await tx.one('SELECT * FROM vtb_sandbox_attempts WHERE id=? FOR UPDATE',id);if(locked.pending_action||locked.state!==current.state)throw new HttpError(409,'Состояние платежа изменилось');await tx.run('UPDATE vtb_sandbox_attempts SET pending_action=?,pending_action_id=?,pending_amount_cents=?,updated=? WHERE id=?',b.action,operationId,amount,now(),id);return locked as Attempt});
-  try{if(b.action==='capture')await capture(claim.provider_order_id!,amount,credentials());else if(b.action==='reverse')await reverse(claim.provider_order_id!,credentials());else await refund(claim.provider_order_id!,amount,operationId,Number(claim.captured_cents)-Number(claim.refunded_cents),credentials());
+  try{if(b.action==='capture')await capture(claim.provider_order_id!,amount,credentials());else if(b.action==='reverse')await reverse(claim.provider_order_id!,credentials());else if(b.action==='decline')await decline(claim.provider_order_id!,claim.order_number,credentials());else await refund(claim.provider_order_id!,amount,operationId,Number(claim.captured_cents)-Number(claim.refunded_cents),credentials());
    await record(id,b.action,'accepted',amount,null);
   }catch(e){await record(id,b.action,'unknown',amount,null);throw bankError(e)}
   // A successful POST only acknowledges the bank request. A separate status

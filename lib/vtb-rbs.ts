@@ -49,6 +49,10 @@ export async function getOrderStatusByNumber(orderNumber:string,credentials:RbsC
 }
 export async function capture(orderId:string,amountCents:number,credentials:RbsCredentials,fetcher:typeof fetch=fetch){await call('deposit',{orderId:providerId(orderId),amount:positiveAmount(amountCents),currency:'643'},credentials,fetcher)}
 export async function reverse(orderId:string,credentials:RbsCredentials,fetcher:typeof fetch=fetch){await call('reverse',{orderId:providerId(orderId),currency:'643'},credentials,fetcher)}
+export async function decline(orderId:string,orderNumber:string,credentials:RbsCredentials,fetcher:typeof fetch=fetch){
+ if(!/^[A-Za-z0-9_-]{1,36}$/.test(orderNumber))throw Error('Некорректный номер тестового заказа');
+ await call('decline',{orderId:providerId(orderId),orderNumber},credentials,fetcher);
+}
 export async function refund(orderId:string,amountCents:number,operationId:string,expectedDepositedAmount:number,credentials:RbsCredentials,fetcher:typeof fetch=fetch){
  if(!UUID.test(operationId))throw Error('Некорректный номер возврата');
  await call('refund',{orderId:providerId(orderId),amount:positiveAmount(amountCents),currency:'643',externalRefundId:operationId,expectedDepositedAmount:positiveAmount(expectedDepositedAmount)},credentials,fetcher);

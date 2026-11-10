@@ -47,6 +47,7 @@ export function allowedAction(action:string,state:AttemptState,amount:number,gro
  if(!Number.isSafeInteger(amount)||amount<=0||!Number.isSafeInteger(gross)||gross<=0)throw Error('Некорректная сумма операции');
  if(action==='capture'&&state==='authorized'&&amount<=gross)return;
  if(action==='reverse'&&state==='authorized'&&amount===gross)return;
+ if(action==='decline'&&state==='registered'&&amount===gross)return;
  if(action==='refund'&&['captured','partially_captured','partially_refunded'].includes(state)&&amount<=captured-refunded)return;
  throw Error('Операция недоступна в текущем состоянии тестового платежа');
 }
