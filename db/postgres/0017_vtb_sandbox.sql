@@ -1,4 +1,4 @@
--- Test gateway operations are isolated from production finance evidence.
+-- Test gateway evidence is tagged as sandbox and separated from live settlement.
 CREATE TABLE IF NOT EXISTS vtb_sandbox_attempts (
  id TEXT PRIMARY KEY,
  order_id TEXT NOT NULL REFERENCES orders(id),

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {registerPreAuth,getOrderStatus,capture,decline,refund} from '../lib/vtb-rbs.ts';
+import {registerPreAuth,getOrderStatus,capture,decline,refund,RbsRejectedError} from '../lib/vtb-rbs.ts';
 import {bankState,checkedBankStatus,confirmedAmounts,allowedAction} from '../lib/vtb-sandbox-policy.ts';
 const id='11111111-2222-4333-8444-555555555555';
 const credentials={userName:'sandbox-user',password:'private-test-value'};
@@ -39,6 +39,7 @@ test('decline is limited to an unpaid registered order and binds both bank and m
  assert.equal(bank.request.url,'https://vtb.rbsuat.com/payment/rest/decline.do');
  const params=new URLSearchParams(bank.request.options.body);
  assert.equal(params.get('orderId'),id);assert.equal(params.get('orderNumber'),id);
+ await assert.rejects(()=>decline(id,id,credentials,mock({errorCode:5,errorMessage:'Not permitted'}).fetcher),RbsRejectedError);
 });
 test('full refund preserves historical captured amount and records the bank-confirmed refund',()=>{
  const status={orderStatus:4,amount:470000,currency:'643',orderNumber:id,actionCode:0,depositedAmount:0,refundedAmount:470000,providerOrderId:null};

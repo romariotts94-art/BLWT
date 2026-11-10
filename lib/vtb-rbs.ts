@@ -4,6 +4,7 @@ const SANDBOX_ORIGIN='https://vtb.rbsuat.com';
 const UUID=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i;
 export type RbsCredentials={userName:string,password:string};
 export type RbsStatus={orderStatus:number,amount:number,currency:string|null,orderNumber:string,actionCode:number,depositedAmount:number|null,refundedAmount:number|null,providerOrderId:string|null};
+export class RbsRejectedError extends Error{}
 function providerId(id:string){if(!UUID.test(id))throw Error('Некорректный идентификатор ВТБ');return id;}
 function positiveAmount(amount:number){if(!Number.isSafeInteger(amount)||amount<=0)throw Error('Некорректная сумма в копейках');return String(amount);}
 async function call(method:string,params:Record<string,string>,credentials:RbsCredentials,fetcher:typeof fetch=fetch){
@@ -17,6 +18,7 @@ async function call(method:string,params:Record<string,string>,credentials:RbsCr
  // RBS omits errorCode on a successful registration, returning orderId and
  // formUrl instead. The caller validates both before persisting the attempt.
  const registrationSuccess=method==='registerPreAuth'&&data?.errorCode==null&&data?.orderId&&data?.formUrl;
+ if(response.ok&&data?.errorCode!=null&&String(data.errorCode)!=='0')throw new RbsRejectedError('ВТБ: '+String(data?.errorMessage||`код ${data.errorCode}`).slice(0,200));
  if(!response.ok||data?.success===false||(!registrationSuccess&&String(data?.errorCode)!=='0'))throw Error('ВТБ: '+String(data?.errorMessage||`HTTP ${response.status}; нет подтверждения успешной обработки`).slice(0,200));
  return data;
 }

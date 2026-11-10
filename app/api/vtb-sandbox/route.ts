@@ -3,7 +3,7 @@ import {z} from 'zod';
 import {currentUser,orderAccess,one,all,run,unpack,json,fail,HttpError,isOwner,guardOrigin,transaction,uid,now} from '../../../lib/server';
 import {currentSignedContract} from '../../../lib/order-contract';
 import {readJsonBody} from '../../../lib/request-body';
-import {registerPreAuth,getOrderStatus,getOrderStatusByNumber,capture,reverse,decline,refund} from '../../../lib/vtb-rbs';
+import {registerPreAuth,getOrderStatus,getOrderStatusByNumber,capture,reverse,decline,refund,RbsRejectedError} from '../../../lib/vtb-rbs';
 import {checkedBankStatus,confirmedAmounts,allowedAction,type AttemptState} from '../../../lib/vtb-sandbox-policy';
 
 export const dynamic='force-dynamic';
@@ -135,7 +135,13 @@ export async function POST(req:Request){try{
   const operationId=uid();const claim=await transaction(async tx=>{const locked=await tx.one('SELECT * FROM vtb_sandbox_attempts WHERE id=? FOR UPDATE',id);if(locked.pending_action||locked.state!==current.state)throw new HttpError(409,'Состояние платежа изменилось');await tx.run('UPDATE vtb_sandbox_attempts SET pending_action=?,pending_action_id=?,pending_amount_cents=?,updated=? WHERE id=?',b.action,operationId,amount,now(),id);return locked as Attempt});
   try{if(b.action==='capture')await capture(claim.provider_order_id!,amount,credentials());else if(b.action==='reverse')await reverse(claim.provider_order_id!,credentials());else if(b.action==='decline')await decline(claim.provider_order_id!,claim.order_number,credentials());else await refund(claim.provider_order_id!,amount,operationId,Number(claim.captured_cents)-Number(claim.refunded_cents),credentials());
    await record(id,b.action,'accepted',amount,null);
-  }catch(e){await record(id,b.action,'unknown',amount,null);throw bankError(e)}
+  }catch(e){
+   if(b.action==='decline'&&e instanceof RbsRejectedError){
+    await transaction(async tx=>{const locked=await tx.one('SELECT pending_action_id FROM vtb_sandbox_attempts WHERE id=? FOR UPDATE',id);if(locked?.pending_action_id===operationId)await tx.run('UPDATE vtb_sandbox_attempts SET pending_action=NULL,pending_action_id=NULL,pending_amount_cents=NULL,updated=? WHERE id=?',now(),id)});
+    await record(id,b.action,'rejected',amount,null);
+   }else await record(id,b.action,'unknown',amount,null);
+   throw bankError(e);
+  }
   // A successful POST only acknowledges the bank request. A separate status
   // query confirms whether money moved; unresolved actions stay pending.
   try{return json({attempt:expose(await refresh({...current,pending_action:b.action,pending_amount_cents:amount}))})}
