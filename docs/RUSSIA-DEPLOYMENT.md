@@ -50,14 +50,26 @@
 
 Для существующей базы нельзя полагаться на `/docker-entrypoint-initdb.d`: Docker запускает эти SQL-файлы только при создании нового пустого тома. Перед обновлением приложения сделайте резервную копию, соберите образ, затем запустите проверяемый мигратор:
 
-```sh
+```bash
+set -e
 umask 077
+compose=(sudo -n docker compose -p black-and-white -f compose.russia.yml -f compose.vtb-ca.yml)
+"${compose[@]}" config -q
+"${compose[@]}" up -d db
 mkdir -p private-backups && chmod 700 private-backups
-docker compose exec -T db pg_dump -U blwt -d blwt -Fc > private-backups/backup-before-migration.dump
-docker compose build app
-docker compose run --rm migrate
-docker compose up -d app web support-delivery
+"${compose[@]}" exec -T db pg_dump -U blwt -d blwt -Fc > private-backups/backup-before-migration.dump
+test -s private-backups/backup-before-migration.dump
+release_sha=PASTE_FULL_GITHUB_SHA_HERE
+"${compose[@]}" build --build-arg "RELEASE_SHA=$release_sha" app
+"${compose[@]}" run --rm --no-deps app node -e "require('node:fs').accessSync('/app/private/vtb-ca-bundle.pem',require('node:fs').constants.R_OK)"
+"${compose[@]}" --profile ops run --rm --no-deps migrate
+"${compose[@]}" up -d --no-deps app support-delivery npd-scheduler web vtb-reconciler
+"${compose[@]}" ps
 ```
+
+Этот блок относится к основному сайту с включённым тестовым ВТБ. До запуска в закрытой `.env` должны быть заданы тестовые реквизиты, `VTB_CA_BUNDLE_PATH` на существующий публичный PEM-файл Минцифры, читаемый пользователем `node` внутри контейнера, и случайный `VTB_RECONCILE_TOKEN` (`openssl rand -hex 32`). PEM содержит открытые сертификаты, поэтому для отдельного файла допустимы права `0644`; сам каталог с конфигурацией и секретами остаётся закрытым. Скрипт `scripts/vtb-reconcile.mjs` вызывается командой `node`, бит исполнения ему не нужен. Для сайта без тестового ВТБ используйте только `-f compose.russia.yml` и не запускайте `vtb-reconciler`. Если пользователь состоит в группе Docker, уберите `sudo -n` из массива `compose`.
+
+`deploy-russia.sh` берёт только файлы локального Git-коммита, совпадающего с `origin/main`, останавливается при незакоммиченных изменениях, проверяет CA и токен, делает дамп, собирает образ с SHA, отдельно применяет миграции и запускает автосверку при включённом тестовом ВТБ. Перед запуском обновите ссылку на GitHub (`git fetch origin main`) и укажите свежий `RUSSIA_PATH` для релиза, чтобы в Docker-сборку не попали файлы старой версии; закрытую `.env` настройте в этом каталоге отдельно. После выпуска сравните `/api/health` с этим SHA и проверьте статус `app`, `db` и `vtb-reconciler`; наличие HTTP 200 само по себе не подтверждает банковскую операцию.
 
 Мигратор блокирует параллельные запуски, записывает версии в `schema_migrations`, применяет каждую миграцию транзакционно и проверяет обязательные таблицы. Если находит полную уже существующую базовую схему без журнала миграций, он фиксирует её как базовую и применяет последующие версии. Частичную базовую схему он останавливает без попытки угадать состояние. Сохраните дамп до проверки восстановления; не запускайте миграции на рабочей базе без проверенной копии.
 
